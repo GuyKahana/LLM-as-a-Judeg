@@ -6,14 +6,81 @@ This service is **completely independent** — it does not import from or modify
 
 ---
 
-## Quick Start
+## Quick Start — First-Time Setup
+
+### 1. Create a virtual environment
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-cp .env.example .env
-# Fill in your real values in .env
+```
 
+### 2. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and fill in at minimum:
+
+```
+PRODUCTION_BUCKET=your-production-logs-bucket
+VERDICT_BUCKET=your-verdict-output-bucket
+JUDGE_LLM_API_KEY=sk-ant-...
+```
+
+All other variables have sensible defaults (see [Environment Variable Reference](#environment-variable-reference)).
+
+### 3. Authenticate with GCP
+
+```bash
+gcloud auth application-default login
+# or point to a service account key:
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
+```
+
+### 4. Verify with a dry run (no writes, no alerts)
+
+Run against real GCS without writing any verdict files or sending any alerts:
+
+```bash
+python -m llm_judge run --dry-run
+```
+
+This is the recommended first step against a real bucket. You will see a full run summary in stdout but nothing will be written to `VERDICT_BUCKET`.
+
+### 5. Run for real
+
+```bash
 python -m llm_judge run
+```
+
+---
+
+## Testing Without GCS — Local Storage
+
+Set `STORAGE_PROVIDER=local` to run the full service against your local filesystem instead of GCS. No GCP credentials needed.
+
+```bash
+# In .env or as shell exports:
+STORAGE_PROVIDER=local
+LOCAL_STORAGE_BASE_DIR=/tmp/llm-judge-dev
+
+# Minimal required vars still needed:
+PRODUCTION_BUCKET=prod         # becomes /tmp/llm-judge-dev/prod/
+VERDICT_BUCKET=verdicts        # becomes /tmp/llm-judge-dev/verdicts/
+JUDGE_LLM_API_KEY=sk-ant-...
+```
+
+The local provider mirrors the GCS path structure under `LOCAL_STORAGE_BASE_DIR`. To seed it with test logs:
+
+```bash
+mkdir -p /tmp/llm-judge-dev/prod/logs/case-001
+cp tests/fixtures/standard_log.json \
+   /tmp/llm-judge-dev/prod/logs/case-001/final_summary.json
+
+python -m llm_judge run --dry-run
 ```
 
 ---
@@ -22,32 +89,41 @@ python -m llm_judge run
 
 | Variable | Type | Default | Required | Description |
 |---|---|---|---|---|
-| `PRODUCTION_BUCKET` | string | — | **Yes** | GCS bucket containing production logs (READ ONLY) |
-| `VERDICT_BUCKET` | string | — | **Yes** | GCS bucket where verdicts are written |
-| `GOLDEN_BUCKET` | string | `VERDICT_BUCKET` | No | GCS bucket for golden examples; defaults to `VERDICT_BUCKET` |
-| `VERDICT_PREFIX` | string | `judge/` | No | Prefix inside `VERDICT_BUCKET` for verdict files |
-| `GOLDEN_PREFIX` | string | `golden/` | No | Prefix inside `GOLDEN_BUCKET` for golden example files |
-| `GCP_PROJECT_ID` | string | — | No | GCP project ID for GCS operations |
+| **Storage** | | | | |
+| `STORAGE_PROVIDER` | string | `gcs` | No | Storage backend: `gcs`, `local`, `s3` (stub), `azure` (stub) |
+| `LOCAL_STORAGE_BASE_DIR` | string | `$CWD` | No | Root directory for `STORAGE_PROVIDER=local`; bucket names become subdirectories |
+| `PRODUCTION_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) containing production logs — READ ONLY |
+| `VERDICT_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) where verdicts are written |
+| `GOLDEN_BUCKET` | string | `VERDICT_BUCKET` | No | Bucket for golden examples; defaults to `VERDICT_BUCKET` |
+| `VERDICT_PREFIX` | string | `judge/` | No | Path prefix inside `VERDICT_BUCKET` for verdict files |
+| `GOLDEN_PREFIX` | string | `golden/` | No | Path prefix inside `GOLDEN_BUCKET` for golden example files |
+| **GCP** | | | | |
+| `GCP_PROJECT_ID` | string | — | No | GCP project ID (optional; inferred from ADC when not set) |
 | `GOOGLE_APPLICATION_CREDENTIALS` | string | — | No | Path to GCP service account key file (standard ADC) |
-| `JUDGE_LLM_PROVIDER` | string | `anthropic` | No | LLM provider. Only `anthropic` is supported. |
+| **LLM** | | | | |
+| `JUDGE_LLM_PROVIDER` | string | `anthropic` | No | LLM provider — only `anthropic` is implemented; others raise `NotImplementedError` |
 | `JUDGE_LLM_API_KEY` | string | — | **Yes** | Anthropic API key |
-| `JUDGE_MODEL` | string | `claude-sonnet-4-6` | No | Claude model ID |
-| `JUDGE_LLM_BASE_URL` | string | — | No | Override Anthropic API base URL (for private network proxy) |
-| `JUDGE_SCORE_THRESHOLD` | int | `3` | No | Scores ≤ this value trigger flagging |
-| `JUDGE_LOOKBACK_HOURS` | int | `24` | No | Hours of log history to scan in a standard run |
-| `JUDGE_MAX_TURNS_PER_RUN` | int | `500` | No | Maximum turns evaluated per run (safety cap) |
-| `JUDGE_MAX_WORKERS` | int | `5` | No | Thread pool workers for parallel evaluation |
-| `JUDGE_INPUT_TRUNCATE_CHARS` | int | `150000` | No | Max characters per input before truncation |
-| `JUDGE_PARSE_ERROR_THRESHOLD` | int | `10` | No | Force-send alert if parse errors exceed this |
-| `ALERT_WEBHOOK_URL` | string | — | No | Webhook URL for digest alerts (e.g. Slack) |
+| `JUDGE_MODEL` | string | `claude-sonnet-4-6` | No | Claude model ID to use for judging |
+| `JUDGE_LLM_BASE_URL` | string | — | No | Override Anthropic API base URL (private network proxy; see [Private-Network Deployment](#private-network-deployment)) |
+| **Judging behaviour** | | | | |
+| `JUDGE_SCORE_THRESHOLD` | int | `3` | No | Scores ≤ this value flag a turn (1–5 scale) |
+| `JUDGE_LOOKBACK_HOURS` | int | `24` | No | Hours of log history to scan per standard run |
+| `JUDGE_MAX_TURNS_PER_RUN` | int | `500` | No | Hard cap on turns evaluated per run |
+| `JUDGE_MAX_WORKERS` | int | `5` | No | Thread-pool workers for parallel turn evaluation |
+| `JUDGE_INPUT_TRUNCATE_CHARS` | int | `150000` | No | Max characters of turn input before truncation (duplicate-check inputs each get half) |
+| `JUDGE_PARSE_ERROR_THRESHOLD` | int | `10` | No | Force-send alert when parse errors in a run exceed this, even if `ALERT_ON_SUCCESS=false` |
+| **Alerting** | | | | |
+| `ALERT_WEBHOOK_URL` | string | — | No | Webhook endpoint for digest POST (e.g. Slack incoming webhook) |
 | `ALERT_EMAILS` | string | — | No | Comma-separated email recipients for digest |
-| `ALERT_ON_SUCCESS` | bool | `true` | No | When `false`, skip sending if no flags and no errors above threshold |
-| `SMTP_HOST` | string | — | No | SMTP server hostname (required for email alerts) |
+| `ALERT_ON_SUCCESS` | bool | `true` | No | When `false`, skip sending digest if there are no flags and parse errors ≤ threshold |
+| **SMTP** (required only when `ALERT_EMAILS` is set) | | | | |
+| `SMTP_HOST` | string | — | No | SMTP server hostname |
 | `SMTP_PORT` | int | `587` | No | SMTP port |
-| `SMTP_USER` | string | — | No | SMTP username |
-| `SMTP_PASSWORD` | string | — | No | SMTP password |
+| `SMTP_USER` | string | — | No | SMTP authentication username |
+| `SMTP_PASSWORD` | string | — | No | SMTP authentication password |
 | `SMTP_FROM` | string | — | No | From address for digest emails |
-| `DRY_RUN` | bool | `false` | No | Evaluate without writing verdicts or sending alerts |
+| **Other** | | | | |
+| `DRY_RUN` | bool | `false` | No | Evaluate turns but skip writing verdicts and sending alerts (also available as `--dry-run` CLI flag) |
 
 ---
 
@@ -177,15 +253,16 @@ python -m llm_judge run --case-id case-12345
 
 ## Private-Network Deployment
 
-### Custom Anthropic API Base URL
+### Custom LLM Base URL
 
-If your infrastructure routes Anthropic API calls through a private proxy:
+If your infrastructure routes Anthropic API calls through a private proxy or an Anthropic-compatible on-prem endpoint:
 
 ```
 JUDGE_LLM_BASE_URL=https://my-anthropic-proxy.internal/v1
+JUDGE_LLM_API_KEY=<key-for-your-proxy>
 ```
 
-The Anthropic client will use this base URL instead of the default `https://api.anthropic.com`.
+The Anthropic client passes `base_url` directly to its constructor, so any proxy that speaks the Anthropic Messages API will work.
 
 ### SMTP Configuration
 
@@ -199,6 +276,57 @@ SMTP_PASSWORD=...
 SMTP_FROM=llm-judge@internal.example.com
 ALERT_EMAILS=oncall@example.com,lead@example.com
 ```
+
+### Kubernetes CronJob
+
+For customers running in a private network without Cloud Run, the equivalent K8s manifest:
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: llm-judge
+  namespace: llm-judge
+spec:
+  schedule: "0 2 * * *"       # 02:00 UTC daily
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: judge
+              image: YOUR_REGISTRY/llm-judge:latest
+              envFrom:
+                - secretRef:
+                    name: llm-judge-secrets   # holds all env vars from .env.example
+              volumeMounts:
+                - name: gcp-key
+                  mountPath: /gcp-key
+                  readOnly: true
+              env:
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /gcp-key/key.json
+          volumes:
+            - name: gcp-key
+              secret:
+                secretName: gcp-service-account-key
+```
+
+Create the secrets:
+
+```bash
+kubectl create namespace llm-judge
+kubectl create secret generic llm-judge-secrets \
+  --from-env-file=.env \
+  -n llm-judge
+kubectl create secret generic gcp-service-account-key \
+  --from-file=key.json=/path/to/sa-key.json \
+  -n llm-judge
+```
+
+See [`deploy/cloud-scheduler.md`](deploy/cloud-scheduler.md) for the full Cloud Run + Cloud Scheduler alternative.
 
 ---
 
@@ -258,17 +386,24 @@ llm-judge/
 ├── src/llm_judge/
 │   ├── __init__.py
 │   ├── __main__.py
-│   ├── config.py          # pydantic-settings config
-│   ├── logging_setup.py   # structured JSON logging
-│   ├── gcs_client.py      # GCS I/O (READ from PRODUCTION_BUCKET, WRITE to VERDICT_BUCKET)
+│   ├── config.py          # pydantic-settings — all env vars
+│   ├── logging_setup.py   # structured JSON logging to stdout
+│   ├── storage/
+│   │   ├── base.py        # StorageProvider ABC (list_files/read_file/write_file/file_exists)
+│   │   ├── gcs.py         # Google Cloud Storage implementation
+│   │   ├── local.py       # Local filesystem implementation (dev / tests)
+│   │   ├── s3.py          # AWS S3 stub (raises NotImplementedError)
+│   │   ├── azure.py       # Azure Blob Storage stub (raises NotImplementedError)
+│   │   ├── factory.py     # create_provider(root, config) — dispatches on STORAGE_PROVIDER
+│   │   └── client.py      # StorageClient — domain operations on top of StorageProvider
 │   ├── llm_client.py      # Anthropic SDK wrapper
-│   ├── log_parser.py      # schema detection and normalisation
+│   ├── log_parser.py      # schema detection and normalisation (4 variants)
 │   ├── rubrics/
 │   │   ├── registry.py    # filename → rubric name mapping
 │   │   └── prompts/       # one .md per rubric family
 │   ├── golden_examples.py # golden example loading
 │   ├── evaluator.py       # single-turn evaluation logic
-│   ├── runner.py          # batch orchestration
+│   ├── runner.py          # batch orchestration (ThreadPoolExecutor)
 │   ├── alerts.py          # digest sending (webhook + email)
 │   ├── cli.py             # Click CLI
 │   └── models.py          # Pydantic models
