@@ -1,0 +1,7 @@
+{
+  "prompt": "Extract findings.",
+  "input": "Patient has bilateral knee pain and limited range of motion.",
+  "output": {
+    "findings": ["bilateral knee pain", "limited range of motion"]
+  }
+}

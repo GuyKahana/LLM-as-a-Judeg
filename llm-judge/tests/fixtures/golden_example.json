@@ -1,0 +1,6 @@
+{
+  "prompt": "Summarize.",
+  "input": "Patient has a 10-year history of rheumatoid arthritis, managed with methotrexate.",
+  "output": "Good summary: The patient has a 10-year history of rheumatoid arthritis treated with methotrexate.",
+  "expected_verdict": "pass"
+}

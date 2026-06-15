@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-judge"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "google-cloud-storage>=2.14",
+    "anthropic>=0.28",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "python-dotenv>=1.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-mock>=3.12"]
+
+[project.scripts]
+llm-judge = "llm_judge.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]

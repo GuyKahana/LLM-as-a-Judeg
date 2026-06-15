@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  judge:
+    build: .
+    env_file: .env
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS}:/gcp-key.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcp-key.json

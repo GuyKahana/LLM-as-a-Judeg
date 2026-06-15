@@ -1,0 +1,5 @@
+{
+  "prompt": "Summarize this.",
+  "input": "Patient has a history of hypertension and type 2 diabetes. Recent HbA1c was 7.4%.",
+  "output": "Summary: The patient has hypertension and type 2 diabetes with a recent HbA1c of 7.4%."
+}
