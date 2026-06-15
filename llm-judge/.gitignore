@@ -73,6 +73,9 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# Local storage dev data
+local-data/
+
 # GCP credentials
 *.json
 !tests/fixtures/*.json

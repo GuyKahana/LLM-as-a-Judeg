@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Storage backend
     # -------------------------------------------------------------------------
     storage_provider: str = "gcs"
-    local_storage_base_dir: Optional[str] = None
+    local_storage_base_dir: str = "local-data"
 
     # -------------------------------------------------------------------------
     # Buckets / roots (bucket names for GCS; subdirectory names for local)

@@ -36,7 +36,7 @@ def create_provider(root: str, config: "Settings") -> StorageProvider:
     if provider == "local":
         import os
         from llm_judge.storage.local import LocalStorageProvider
-        base = config.local_storage_base_dir or os.getcwd()
+        base = config.local_storage_base_dir
         # For local, root is treated as a subdirectory under base_dir
         return LocalStorageProvider(base_dir=os.path.join(base, root))
 

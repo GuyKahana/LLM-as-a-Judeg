@@ -65,20 +65,20 @@ Set `STORAGE_PROVIDER=local` to run the full service against your local filesyst
 ```bash
 # In .env or as shell exports:
 STORAGE_PROVIDER=local
-LOCAL_STORAGE_BASE_DIR=/tmp/llm-judge-dev
+# LOCAL_STORAGE_BASE_DIR defaults to local-data/ inside the project root
 
 # Minimal required vars still needed:
-PRODUCTION_BUCKET=prod         # becomes /tmp/llm-judge-dev/prod/
-VERDICT_BUCKET=verdicts        # becomes /tmp/llm-judge-dev/verdicts/
+PRODUCTION_BUCKET=prod         # becomes local-data/prod/
+VERDICT_BUCKET=verdicts        # becomes local-data/verdicts/
 JUDGE_LLM_API_KEY=sk-ant-...
 ```
 
-The local provider mirrors the GCS path structure under `LOCAL_STORAGE_BASE_DIR`. To seed it with test logs:
+The local provider mirrors the GCS path structure under `LOCAL_STORAGE_BASE_DIR` (default `local-data/`, already gitignored). To seed it with test logs:
 
 ```bash
-mkdir -p /tmp/llm-judge-dev/prod/logs/case-001
+mkdir -p local-data/prod/logs/case-001
 cp tests/fixtures/standard_log.json \
-   /tmp/llm-judge-dev/prod/logs/case-001/final_summary.json
+   local-data/prod/logs/case-001/final_summary.json
 
 python -m llm_judge run --dry-run
 ```
@@ -91,7 +91,7 @@ python -m llm_judge run --dry-run
 |---|---|---|---|---|
 | **Storage** | | | | |
 | `STORAGE_PROVIDER` | string | `gcs` | No | Storage backend: `gcs`, `local`, `s3` (stub), `azure` (stub) |
-| `LOCAL_STORAGE_BASE_DIR` | string | `$CWD` | No | Root directory for `STORAGE_PROVIDER=local`; bucket names become subdirectories |
+| `LOCAL_STORAGE_BASE_DIR` | string | `local-data` | No | Root directory for `STORAGE_PROVIDER=local`; resolved relative to CWD; bucket names become subdirectories; `local-data/` is gitignored |
 | `PRODUCTION_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) containing production logs — READ ONLY |
 | `VERDICT_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) where verdicts are written |
 | `GOLDEN_BUCKET` | string | `VERDICT_BUCKET` | No | Bucket for golden examples; defaults to `VERDICT_BUCKET` |
