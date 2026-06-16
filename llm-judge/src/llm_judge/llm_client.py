@@ -36,7 +36,7 @@ class LLMClient:
         """Send a judge request and return the raw text response."""
         response = self._client.messages.create(
             model=self._config.judge_model,
-            max_tokens=1024,
+            max_tokens=4096,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
