@@ -1,0 +1,216 @@
+"""Data loading layer for the LLM Judge dashboard.
+
+All storage reads go through this module. Results are cached with st.cache_data.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import sys
+from collections import defaultdict
+from pathlib import Path
+from typing import Optional
+
+import streamlit as st
+
+# Ensure llm_judge (src/) is importable when data.py is imported before app.py
+# has had a chance to fix sys.path (e.g. during hot-reload or direct import).
+_src_dir = str(Path(__file__).parent.parent / "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Lazy config / client construction — done once per session, not per call.
+# ---------------------------------------------------------------------------
+
+@st.cache_resource
+def _get_storage_client():
+    """Return a StorageClient built from Settings(). Cached for the session."""
+    from llm_judge.config import Settings
+    from llm_judge.storage.client import StorageClient
+
+    config = Settings()  # type: ignore[call-arg]
+    return StorageClient(config), config
+
+
+# ---------------------------------------------------------------------------
+# Public data-loading functions
+# ---------------------------------------------------------------------------
+
+
+@st.cache_data(ttl=30)
+def load_runs() -> list[dict]:
+    """Load all run summary files from {verdict_bucket}/{runs_prefix}*.json.
+
+    Returns a list of run dicts, newest first.
+    If no run files exist, synthesises a RunSummary-like dict per case_id
+    from verdict files and flags those with ``"synthetic": True``.
+    """
+    client, config = _get_storage_client()
+    runs: list[dict] = []
+
+    try:
+        for path, mtime in client._verdict.list_files(config.runs_prefix):
+            if not path.endswith(".json"):
+                continue
+            try:
+                raw = client._verdict.read_file(path)
+                data = json.loads(raw)
+                data.setdefault("synthetic", False)
+                runs.append(data)
+            except Exception as exc:
+                logger.warning("Failed to read run file %s: %s", path, exc)
+    except Exception as exc:
+        logger.warning("Failed to list run files: %s", exc)
+
+    if runs:
+        # Sort newest first by started_at
+        runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
+        return runs
+
+    # Fallback: synthesise from verdicts
+    logger.info("No persisted runs found — synthesising from verdicts")
+    return _synthesise_runs_from_verdicts(client, config)
+
+
+@st.cache_data(ttl=30)
+def load_verdicts(case_id: Optional[str] = None) -> list[dict]:
+    """Load all verdict JSON files, optionally filtered by case_id.
+
+    Returns a list of verdict dicts.
+    """
+    client, config = _get_storage_client()
+    verdicts: list[dict] = []
+
+    prefix = config.verdict_prefix
+    if case_id:
+        prefix = f"{config.verdict_prefix}{case_id}/"
+
+    try:
+        for path, _mtime in client._verdict.list_files(prefix):
+            if not path.endswith(".json"):
+                continue
+            # Skip run summary files stored alongside verdicts
+            filename = path.split("/")[-1]
+            if not filename:
+                continue
+            # Run summaries live under runs/ prefix — not under verdict_prefix
+            try:
+                raw = client._verdict.read_file(path)
+                data = json.loads(raw)
+                # Only include dicts that look like verdicts (have case_id + filename)
+                if "case_id" in data and "filename" in data and "prompt_type" in data:
+                    verdicts.append(data)
+            except Exception as exc:
+                logger.warning("Failed to read verdict %s: %s", path, exc)
+    except Exception as exc:
+        logger.warning("Failed to list verdicts: %s", exc)
+
+    return verdicts
+
+
+@st.cache_data(ttl=30)
+def load_source_log(case_id: str, filename: str) -> Optional[dict]:
+    """Read the production log for a given case_id + filename.
+
+    Returns None (not an error) if the log is missing.
+    """
+    client, _config = _get_storage_client()
+    try:
+        return client.read_log(case_id, filename)
+    except Exception as exc:
+        logger.info("Source log not available for %s/%s: %s", case_id, filename, exc)
+        return None
+
+
+@st.cache_data(ttl=30)
+def list_cases() -> list[str]:
+    """List distinct case_id directories under prod/logs/.
+
+    Falls back to extracting case_ids from verdicts if prod listing fails.
+    """
+    client, _config = _get_storage_client()
+
+    # Try listing from prod logs
+    try:
+        seen: set[str] = set()
+        for path, _mtime in client._prod.list_files("logs/"):
+            parts = path.split("/")
+            if len(parts) >= 3:  # must be logs/{case_id}/{filename}
+                candidate = parts[1]
+                if candidate and not candidate.startswith("."):
+                    seen.add(candidate)
+        if seen:
+            return sorted(seen)
+    except Exception as exc:
+        logger.warning("Could not list prod logs: %s", exc)
+
+    # Fallback: derive from verdicts
+    verdicts = load_verdicts()
+    return sorted({v["case_id"] for v in verdicts if v.get("case_id")})
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _synthesise_runs_from_verdicts(client, config) -> list[dict]:
+    """Build fake RunSummary-like dicts grouped by case_id from verdict files."""
+    from collections import defaultdict
+
+    verdicts = load_verdicts()
+    by_case: dict[str, list[dict]] = defaultdict(list)
+    for v in verdicts:
+        by_case[v.get("case_id", "unknown")].append(v)
+
+    synthetic_runs: list[dict] = []
+    for cid, vs in by_case.items():
+        evaluated = len(vs)
+        flagged = sum(1 for v in vs if v.get("flagged"))
+        parse_errors = sum(1 for v in vs if v.get("parse_error"))
+        by_prompt: dict[str, int] = defaultdict(int)
+        for v in vs:
+            pt = v.get("prompt_type", "unknown")
+            by_prompt[pt] += 1
+
+        timestamps = [v.get("evaluated_at", "") for v in vs if v.get("evaluated_at")]
+        started = min(timestamps) if timestamps else ""
+        finished = max(timestamps) if timestamps else ""
+
+        flagged_items = [
+            {
+                "case_id": v["case_id"],
+                "filename": v["filename"],
+                "prompt_type": v.get("prompt_type", ""),
+                "score": v.get("score"),
+                "reasoning_snippet": (v.get("reasoning") or "")[:200],
+            }
+            for v in vs
+            if v.get("flagged")
+        ]
+
+        synthetic_runs.append(
+            {
+                "run_id": f"synthetic-{cid}",
+                "started_at": started,
+                "finished_at": finished,
+                "total_logs": evaluated,
+                "evaluated": evaluated,
+                "skipped_existing": 0,
+                "unmapped": 0,
+                "flagged": flagged,
+                "errors": 0,
+                "parse_errors": parse_errors,
+                "by_prompt_type": dict(by_prompt),
+                "flagged_items": flagged_items,
+                "case_id": cid,
+                "synthetic": True,
+            }
+        )
+
+    synthetic_runs.sort(key=lambda r: r.get("started_at", ""), reverse=True)
+    return synthetic_runs

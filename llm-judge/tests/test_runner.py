@@ -162,3 +162,51 @@ class TestDryRun:
              patch("llm_judge.runner.evaluate_turn", return_value=_make_verdict()):
             run_batch(config, dry_run_override=True)
         mock_gcs.write_verdict.assert_not_called()
+
+    def test_dry_run_skips_run_summary_write(self, mock_gcs, mock_llm_client, config):
+        """RunSummary must NOT be written when dry_run is True."""
+        with patch("llm_judge.runner.StorageClient", return_value=mock_gcs), \
+             patch("llm_judge.runner.LLMClient", return_value=mock_llm_client), \
+             patch("llm_judge.runner.evaluate_turn", return_value=_make_verdict()):
+            run_batch(config, dry_run_override=True)
+        mock_gcs._verdict.write_file.assert_not_called()
+
+
+class TestRunId:
+    def test_run_id_stamped_on_verdicts(self, mock_gcs, mock_llm_client, config):
+        """run_id must be set on each verdict returned from _evaluate_one."""
+        captured_verdicts: list[Verdict] = []
+
+        original_evaluate = __import__("llm_judge.runner", fromlist=["_evaluate_one"])._evaluate_one
+
+        def capturing_evaluate_one(blob, storage_client, llm_client, cfg, rubric_name, run_id=""):
+            v = _make_verdict(blob.case_id, blob.filename)
+            v.run_id = run_id
+            captured_verdicts.append(v)
+            return v
+
+        with patch("llm_judge.runner.StorageClient", return_value=mock_gcs), \
+             patch("llm_judge.runner.LLMClient", return_value=mock_llm_client), \
+             patch("llm_judge.runner._evaluate_one", side_effect=capturing_evaluate_one):
+            summary = run_batch(config, dry_run_override=True)
+
+        assert len(captured_verdicts) == 1
+        assert captured_verdicts[0].run_id != ""
+        assert captured_verdicts[0].run_id == summary.run_id
+
+    def test_run_summary_written_when_not_dry_run(self, mock_gcs, mock_llm_client, config):
+        """RunSummary is written to {runs_prefix}{run_id}.json when not dry_run."""
+        config.runs_prefix = "runs/"
+        with patch("llm_judge.runner.StorageClient", return_value=mock_gcs), \
+             patch("llm_judge.runner.LLMClient", return_value=mock_llm_client), \
+             patch("llm_judge.runner.evaluate_turn", return_value=_make_verdict()):
+            summary = run_batch(config, dry_run_override=False)
+
+        mock_gcs._verdict.write_file.assert_called_once()
+        call_args = mock_gcs._verdict.write_file.call_args
+        path_arg = call_args[0][0]
+        assert path_arg == f"runs/{summary.run_id}.json"
+        # Verify the written content is valid JSON containing the run_id
+        content_arg = call_args[0][1]
+        parsed = json.loads(content_arg)
+        assert parsed["run_id"] == summary.run_id

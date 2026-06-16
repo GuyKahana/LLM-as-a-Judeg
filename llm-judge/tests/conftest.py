@@ -49,6 +49,9 @@ def mock_gcs_client() -> MagicMock:
     client.verdict_exists.return_value = False
     client.write_verdict.return_value = None
     client.read_golden_examples.return_value = []
+    # _verdict provider (used for run summary persistence)
+    client._verdict = MagicMock()
+    client._verdict.write_file.return_value = None
     return client
 
 

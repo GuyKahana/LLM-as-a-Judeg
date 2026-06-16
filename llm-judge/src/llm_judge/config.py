@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     golden_bucket: Optional[str] = None
     verdict_prefix: str = "judge/"
     golden_prefix: str = "golden/"
+    runs_prefix: str = "runs/"
 
     # -------------------------------------------------------------------------
     # GCP

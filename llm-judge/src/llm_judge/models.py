@@ -45,6 +45,7 @@ class Verdict(BaseModel):
     parse_error: bool = False
     raw_response: Optional[str] = None
     evaluated_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    run_id: str = ""  # stamped at run time; empty for older verdicts
 
 
 # ---------------------------------------------------------------------------

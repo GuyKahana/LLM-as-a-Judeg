@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -26,13 +27,14 @@ def _evaluate_one(
     llm_client: LLMClient,
     config: Settings,
     rubric_name: str,
+    run_id: str = "",
 ) -> Verdict:
     """Download, parse, and evaluate a single log blob. Called from a worker thread."""
     raw_json = storage_client.read_log(blob.case_id, blob.filename)
     parsed_turn = parse_log(raw_json, blob.filename, blob.case_id)
     rubric_content = get_rubric_content(rubric_name)
     golden_examples = load_golden_examples(storage_client, rubric_name)
-    return evaluate_turn(
+    verdict = evaluate_turn(
         parsed_turn=parsed_turn,
         rubric_content=rubric_content,
         golden_examples=golden_examples,
@@ -40,6 +42,8 @@ def _evaluate_one(
         config=config,
         prompt_type=rubric_name,
     )
+    verdict.run_id = run_id
+    return verdict
 
 
 def run_batch(
@@ -151,7 +155,7 @@ def run_batch(
     with ThreadPoolExecutor(max_workers=config.judge_max_workers) as executor:
         for blob, rubric_name in work_items:
             future = executor.submit(
-                _evaluate_one, blob, storage_client, llm_client, config, rubric_name
+                _evaluate_one, blob, storage_client, llm_client, config, rubric_name, run_id
             )
             futures[future] = (blob, rubric_name)
 
@@ -227,4 +231,21 @@ def run_batch(
         "Batch run complete",
         extra={"run_id": run_id, "summary": summary.model_dump(mode="json")},
     )
+
+    # Persist RunSummary to storage (skip on dry run)
+    if not effective_dry_run:
+        run_summary_path = f"{config.runs_prefix}{run_id}.json"
+        try:
+            storage_client._verdict.write_file(
+                run_summary_path,
+                json.dumps(summary.model_dump(mode="json"), default=str, indent=2),
+            )
+            logger.debug("Wrote run summary to %s", run_summary_path)
+        except Exception as summary_exc:
+            logger.error(
+                "Failed to write run summary for run_id=%s: %s",
+                run_id, summary_exc,
+                extra={"run_id": run_id},
+            )
+
     return summary

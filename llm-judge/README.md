@@ -6,6 +6,35 @@ This service is **completely independent** — it does not import from or modify
 
 ---
 
+## Dashboard
+
+A Streamlit dashboard lets you browse runs, explore verdicts, and trigger new batch evaluations from a browser.
+
+### Install
+
+```bash
+pip install -e ".[dashboard]"
+```
+
+### Launch
+
+```bash
+# From the llm-judge/ directory:
+streamlit run dashboard/app.py
+```
+
+The dashboard reads from the same `.env` configuration as the batch runner — no extra setup needed.
+
+**Cloud / GCS note:** to point at a GCS bucket instead of local files, set the following in `.env` — no code changes required:
+
+```
+STORAGE_PROVIDER=gcs
+PRODUCTION_BUCKET=my-prod-logs-bucket
+VERDICT_BUCKET=my-verdict-bucket
+```
+
+---
+
 ## Quick Start — First-Time Setup
 
 ### 1. Create a virtual environment
