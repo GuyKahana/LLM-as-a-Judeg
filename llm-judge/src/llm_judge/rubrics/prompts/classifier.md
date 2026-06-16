@@ -50,14 +50,11 @@ Is the classification applied consistently with how similar cases in the input c
 
 The overall `score` is the **average of all per-criterion scores, rounded to the nearest integer**.
 
-`flagged` must be `true` when `score <= JUDGE_SCORE_THRESHOLD` (provided in system context below).
-
 ---
 
 ## Required Output Format
 
 Respond ONLY with valid JSON in this exact structure (no markdown, no code fences):
-{"score": <1-5 integer>, "per_criterion": {"correctness": <1-5 integer>, "justification": <1-5 integer>, "schema_adherence": <1-5 integer>, "consistency": <1-5 integer>}, "flagged": <true|false>, "reasoning": "<explanation string>"}
+{"score": <1-5 integer>, "per_criterion": {"correctness": <1-5 integer>, "justification": <1-5 integer>, "schema_adherence": <1-5 integer>, "consistency": <1-5 integer>}, "reasoning": "<explanation string>"}
 
 The overall `score` is the average of per_criterion scores, rounded to the nearest integer.
-`flagged` must be true when score <= JUDGE_SCORE_THRESHOLD (provided in system context).

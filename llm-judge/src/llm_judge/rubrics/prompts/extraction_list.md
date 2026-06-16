@@ -50,14 +50,11 @@ Does each extracted item conform to the expected output structure (correct keys,
 
 The overall `score` is the **average of all per-criterion scores, rounded to the nearest integer**.
 
-`flagged` must be `true` when `score <= JUDGE_SCORE_THRESHOLD` (provided in system context below).
-
 ---
 
 ## Required Output Format
 
 Respond ONLY with valid JSON in this exact structure (no markdown, no code fences):
-{"score": <1-5 integer>, "per_criterion": {"recall": <1-5 integer>, "precision": <1-5 integer>, "field_accuracy": <1-5 integer>, "structure_compliance": <1-5 integer>}, "flagged": <true|false>, "reasoning": "<explanation string>"}
+{"score": <1-5 integer>, "per_criterion": {"recall": <1-5 integer>, "precision": <1-5 integer>, "field_accuracy": <1-5 integer>, "structure_compliance": <1-5 integer>}, "reasoning": "<explanation string>"}
 
 The overall `score` is the average of per_criterion scores, rounded to the nearest integer.
-`flagged` must be true when score <= JUDGE_SCORE_THRESHOLD (provided in system context).

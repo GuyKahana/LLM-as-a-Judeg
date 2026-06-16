@@ -50,14 +50,11 @@ Is the language clear, professional, and free of grammatical errors?
 
 The overall `score` is the **average of all per-criterion scores, rounded to the nearest integer**.
 
-`flagged` must be `true` when `score <= JUDGE_SCORE_THRESHOLD` (provided in system context below).
-
 ---
 
 ## Required Output Format
 
 Respond ONLY with valid JSON in this exact structure (no markdown, no code fences):
-{"score": <1-5 integer>, "per_criterion": {"fidelity": <1-5 integer>, "coverage": <1-5 integer>, "brevity": <1-5 integer>, "language_quality": <1-5 integer>}, "flagged": <true|false>, "reasoning": "<explanation string>"}
+{"score": <1-5 integer>, "per_criterion": {"fidelity": <1-5 integer>, "coverage": <1-5 integer>, "brevity": <1-5 integer>, "language_quality": <1-5 integer>}, "reasoning": "<explanation string>"}
 
 The overall `score` is the average of per_criterion scores, rounded to the nearest integer.
-`flagged` must be true when score <= JUDGE_SCORE_THRESHOLD (provided in system context).

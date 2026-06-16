@@ -50,14 +50,11 @@ Is the summary clearly written and unambiguous — suitable for use by assessors
 
 The overall `score` is the **average of all per-criterion scores, rounded to the nearest integer**.
 
-`flagged` must be `true` when `score <= JUDGE_SCORE_THRESHOLD` (provided in system context below).
-
 ---
 
 ## Required Output Format
 
 Respond ONLY with valid JSON in this exact structure (no markdown, no code fences):
-{"score": <1-5 integer>, "per_criterion": {"data_accuracy": <1-5 integer>, "completeness": <1-5 integer>, "privacy_handling": <1-5 integer>, "clarity": <1-5 integer>}, "flagged": <true|false>, "reasoning": "<explanation string>"}
+{"score": <1-5 integer>, "per_criterion": {"data_accuracy": <1-5 integer>, "completeness": <1-5 integer>, "privacy_handling": <1-5 integer>, "clarity": <1-5 integer>}, "reasoning": "<explanation string>"}
 
 The overall `score` is the average of per_criterion scores, rounded to the nearest integer.
-`flagged` must be true when score <= JUDGE_SCORE_THRESHOLD (provided in system context).

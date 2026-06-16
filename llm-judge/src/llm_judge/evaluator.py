@@ -28,7 +28,7 @@ def _parse_verdict_json(text: str) -> dict:
     """Parse LLM response text into a verdict dict. Raises ValueError on failure."""
     cleaned = _strip_fences(text)
     data = json.loads(cleaned)
-    for key in ("score", "per_criterion", "flagged", "reasoning"):
+    for key in ("score", "per_criterion", "reasoning"):
         if key not in data:
             raise ValueError(f"Missing required key {key!r} in verdict JSON")
     return data
@@ -101,8 +101,6 @@ def _build_system_prompt(
     """Assemble the full system prompt."""
     parts = [
         rubric_content.strip(),
-        "",
-        f"JUDGE_SCORE_THRESHOLD: {config.judge_score_threshold}",
     ]
 
     if golden_examples:
@@ -194,14 +192,15 @@ def evaluate_turn(
                 evaluated_at=now,
             )
 
+    score = int(data["score"])
     return Verdict(
         case_id=parsed_turn.case_id,
         filename=parsed_turn.filename,
         prompt_type=prompt_type,
         schema_variant=parsed_turn.schema_variant,
-        score=int(data["score"]),
+        score=score,
         per_criterion=data.get("per_criterion", {}),
-        flagged=bool(data["flagged"]),
+        flagged=score <= config.judge_score_threshold,
         reasoning=str(data.get("reasoning", "")),
         parse_error=False,
         raw_response=None,
