@@ -52,26 +52,66 @@ except Exception as cfg_err:
 # ---------------------------------------------------------------------------
 # Sidebar navigation
 # ---------------------------------------------------------------------------
-VIEWS = ["Runs", "Run Detail", "Verdicts Explorer", "Trigger"]
+VIEWS = ["Runs", "Run Detail", "Verdicts Explorer", "Trigger", "Upload Case"]
 
 if "current_view" not in st.session_state:
     st.session_state["current_view"] = "Runs"
 
+VIEW_ICONS = {
+    "Runs": "📋",
+    "Run Detail": "🔍",
+    "Verdicts Explorer": "📊",
+    "Trigger": "▶️",
+    "Upload Case": "📤",
+}
+
 with st.sidebar:
     st.title("⚖️ LLM Judge")
     st.divider()
-    chosen = st.radio(
-        "Navigate",
-        options=VIEWS,
-        index=VIEWS.index(st.session_state["current_view"]),
-        label_visibility="collapsed",
+
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stSidebar"] button[kind="secondary"] {
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: inherit;
+        }
+        div[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background: rgba(128,128,128,0.15);
+        }
+        div[data-testid="stSidebar"] button.nav-active {
+            background: rgba(128,128,128,0.25);
+            font-weight: 600;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
-    if chosen != st.session_state["current_view"]:
-        st.session_state["current_view"] = chosen
-        st.rerun()
+
+    current = st.session_state["current_view"]
+    for view_name in VIEWS:
+        icon = VIEW_ICONS.get(view_name, "•")
+        label = f"{icon}  {view_name}"
+        if view_name == current:
+            st.markdown(
+                f"<div style='padding:0.45rem 0.75rem;border-radius:6px;"
+                f"background:rgba(128,128,128,0.2);font-weight:600;"
+                f"font-size:0.95rem;margin-bottom:2px'>{label}</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            if st.button(label, key=f"nav_{view_name}", use_container_width=True):
+                st.session_state["current_view"] = view_name
+                st.rerun()
 
     st.divider()
-    if st.button("Refresh data"):
+    if st.button("🔄  Refresh data", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -91,4 +131,7 @@ elif view == "Verdicts Explorer":
     render()
 elif view == "Trigger":
     from dashboard.views.trigger import render
+    render()
+elif view == "Upload Case":
+    from dashboard.views.upload_case import render
     render()
