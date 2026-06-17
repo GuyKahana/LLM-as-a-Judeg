@@ -20,11 +20,11 @@ def load_golden_examples(storage_client: StorageClient, prompt_type: str) -> lis
     """
     examples = storage_client.read_golden_examples(prompt_type)
     if not examples:
-        logger.debug("No golden examples found for prompt_type=%s", prompt_type)
+        logger.info("No golden examples found for prompt_type=%s", prompt_type)
         return []
     # Defensive: cap at 2 (StorageClient already caps, but be safe)
     capped = examples[:2]
-    logger.debug(
+    logger.info(
         "Loaded %d golden example(s) for prompt_type=%s", len(capped), prompt_type
     )
     return capped

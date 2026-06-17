@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from llm_judge.rubrics.registry import get_rubric_content, get_rubric_name
+from llm_judge.rubrics.registry import get_golden_type, get_rubric_content, get_rubric_name
 
 
 class TestGetRubricName:
@@ -97,6 +97,23 @@ class TestGetRubricName:
     def test_partial_match_not_accepted(self):
         # Should not match medical_doc_\d+ because of extra text
         assert get_rubric_name("medical_doc_abc.json") is None
+
+
+class TestGetGoldenType:
+    def test_merge_diagnoses_overrides_to_nursing(self):
+        assert get_golden_type("merge_diagnoses.json") == "nursing_merge_diagnoses"
+
+    def test_medical_doc_validator_overrides_to_nursing(self):
+        assert get_golden_type("medical_doc_validator_1.json") == "nursing_medical_document_validator"
+
+    def test_non_overridden_file_falls_back_to_rubric_name(self):
+        assert get_golden_type("filter_diagnoses.json") == "grouping_boundary"
+
+    def test_final_summary_falls_back_to_rubric_name(self):
+        assert get_golden_type("final_summary.json") == "final_summary"
+
+    def test_unknown_file_returns_none(self):
+        assert get_golden_type("unknown_file.json") is None
 
 
 class TestGetRubricContent:

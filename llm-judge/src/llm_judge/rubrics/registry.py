@@ -38,6 +38,17 @@ RUBRIC_PATTERNS: list[tuple[re.Pattern, str]] = [
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+# ---------------------------------------------------------------------------
+# Golden-type overrides – maps a filename pattern to a specific golden set
+# path (used as the prompt_type key for golden example lookup).
+# When a filename matches here the golden examples come from
+# golden/<golden_type>/ instead of golden/<rubric_name>/.
+# ---------------------------------------------------------------------------
+GOLDEN_TYPE_OVERRIDES: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"^merge_diagnoses\.json$"), "nursing_merge_diagnoses"),
+    (re.compile(r"^medical_doc_validator_\d+\.json$"), "nursing_medical_document_validator"),
+]
+
 
 def get_rubric_name(filename: str) -> Optional[str]:
     """Return the rubric name for *filename*, or None if unmapped."""
@@ -45,6 +56,19 @@ def get_rubric_name(filename: str) -> Optional[str]:
         if pattern.match(filename):
             return name
     return None
+
+
+def get_golden_type(filename: str) -> Optional[str]:
+    """Return the golden-set key for *filename*.
+
+    Checks GOLDEN_TYPE_OVERRIDES first; falls back to get_rubric_name so that
+    files without an explicit override still load golden examples keyed by their
+    rubric name.
+    """
+    for pattern, golden_type in GOLDEN_TYPE_OVERRIDES:
+        if pattern.match(filename):
+            return golden_type
+    return get_rubric_name(filename)
 
 
 def get_rubric_content(rubric_name: str) -> str:
