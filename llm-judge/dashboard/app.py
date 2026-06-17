@@ -72,22 +72,25 @@ with st.sidebar:
     st.markdown(
         """
         <style>
-        div[data-testid="stSidebar"] button[kind="secondary"] {
-            width: 100%;
-            text-align: left;
-            background: transparent;
-            border: none;
-            padding: 0.45rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.95rem;
-            color: inherit;
+        div[data-testid="stSidebar"] button {
+            justify-content: flex-start !important;
+            border: none !important;
+            background: transparent !important;
+            padding: 0.45rem 0.75rem !important;
+            font-size: 0.95rem !important;
         }
-        div[data-testid="stSidebar"] button[kind="secondary"]:hover {
-            background: rgba(128,128,128,0.15);
+        div[data-testid="stSidebar"] button p {
+            text-align: left !important;
         }
-        div[data-testid="stSidebar"] button.nav-active {
-            background: rgba(128,128,128,0.25);
-            font-weight: 600;
+        div[data-testid="stSidebar"] button:hover:not(:disabled) {
+            background: rgba(128,128,128,0.15) !important;
+        }
+        div[data-testid="stSidebar"] button:disabled {
+            background: rgba(128,128,128,0.2) !important;
+            font-weight: 600 !important;
+            opacity: 1 !important;
+            cursor: default !important;
+            color: inherit !important;
         }
         </style>
         """,
@@ -98,20 +101,13 @@ with st.sidebar:
     for view_name in VIEWS:
         icon = VIEW_ICONS.get(view_name, "•")
         label = f"{icon}  {view_name}"
-        if view_name == current:
-            st.markdown(
-                f"<div style='padding:0.45rem 0.75rem;border-radius:6px;"
-                f"background:rgba(128,128,128,0.2);font-weight:600;"
-                f"font-size:0.95rem;margin-bottom:2px'>{label}</div>",
-                unsafe_allow_html=True,
-            )
-        else:
-            if st.button(label, key=f"nav_{view_name}", use_container_width=True):
-                st.session_state["current_view"] = view_name
-                st.rerun()
+        is_active = view_name == current
+        if st.button(label, key=f"nav_{view_name}", width="stretch", disabled=is_active):
+            st.session_state["current_view"] = view_name
+            st.rerun()
 
     st.divider()
-    if st.button("🔄  Refresh data", use_container_width=True):
+    if st.button("🔄  Refresh data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
