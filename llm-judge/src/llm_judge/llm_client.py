@@ -34,10 +34,21 @@ class LLMClient:
 
     def judge(self, system: str, user: str) -> str:
         """Send a judge request and return the raw text response."""
+        kwargs: dict = {}
+        if self._config.judge_temperature is not None:
+            kwargs["temperature"] = self._config.judge_temperature
+        if self._config.judge_top_p is not None:
+            kwargs["top_p"] = self._config.judge_top_p
+        if self._config.judge_top_k is not None:
+            kwargs["top_k"] = self._config.judge_top_k
+        if self._config.judge_effort is not None:
+            kwargs["output_config"] = {"effort": self._config.judge_effort}
+
         response = self._client.messages.create(
             model=self._config.judge_model,
-            max_tokens=4096,
+            max_tokens=self._config.judge_max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
+            **kwargs,
         )
         return response.content[0].text

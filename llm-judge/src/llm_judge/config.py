@@ -47,6 +47,18 @@ class Settings(BaseSettings):
     judge_llm_provider: str = "anthropic"
 
     # -------------------------------------------------------------------------
+    # Judge model sampling parameters
+    # Set only the params supported by your model:
+    #   - Opus 4.7+, Fable 5: use judge_effort; temperature/top_p/top_k will 400
+    #   - Sonnet 4.6, Opus 4.6 and older: use temperature OR top_p (not both)
+    # -------------------------------------------------------------------------
+    judge_max_tokens: int = 4096
+    judge_temperature: Optional[float] = None       # 0.0–1.0; not for Opus 4.7+
+    judge_top_p: Optional[float] = None             # 0.0–1.0; not for Opus 4.7+; mutually exclusive with temperature
+    judge_top_k: Optional[int] = None               # not for Opus 4.7+
+    judge_effort: Optional[str] = None              # "low"|"medium"|"high"|"xhigh"|"max"; Opus 4.6+ and Sonnet 4.6+
+
+    # -------------------------------------------------------------------------
     # Judging behaviour
     # -------------------------------------------------------------------------
     judge_score_threshold: int = 3
@@ -85,6 +97,14 @@ class Settings(BaseSettings):
         """If GOLDEN_BUCKET is not supplied, default it to VERDICT_BUCKET."""
         if self.golden_bucket is None:
             self.golden_bucket = self.verdict_bucket
+        return self
+
+    @model_validator(mode="after")
+    def validate_sampling_params(self) -> "Settings":
+        if self.judge_temperature is not None and self.judge_top_p is not None:
+            raise ValueError(
+                "JUDGE_TEMPERATURE and JUDGE_TOP_P are mutually exclusive — set only one."
+            )
         return self
 
     # -------------------------------------------------------------------------
