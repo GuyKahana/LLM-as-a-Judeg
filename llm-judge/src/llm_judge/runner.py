@@ -221,6 +221,7 @@ def run_batch(
         run_id=run_id,
         started_at=started_at,
         finished_at=finished_at,
+        case_id=case_id,
         total_logs=total_logs,
         evaluated=evaluated,
         skipped_existing=skipped_existing,

@@ -66,6 +66,7 @@ class RunSummary(BaseModel):
     run_id: str
     started_at: datetime
     finished_at: datetime
+    case_id: Optional[str] = None
     total_logs: int = 0
     evaluated: int = 0
     skipped_existing: int = 0
