@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from llm_judge.rubrics.registry import get_golden_type, get_rubric_content, get_rubric_name
+from llm_judge.rubrics.registry import get_rubric_content, get_rubric_name
 
 
 class TestGetRubricName:
@@ -72,21 +72,6 @@ class TestGetRubricName:
 
     def test_partial_match_not_accepted(self):
         assert get_rubric_name("medical_doc_abc.json") is None
-
-
-class TestGetGoldenType:
-    """Golden type mirrors the rubric name (one golden set per filename type)."""
-
-    def test_matches_rubric_name(self):
-        assert get_golden_type("sick_permits.json") == "sick_permits"
-
-    def test_matches_rubric_name_for_parameterised(self):
-        assert (
-            get_golden_type("medical_doc_validator_1.json") == "medical_document_validator"
-        )
-
-    def test_unknown_file_returns_none(self):
-        assert get_golden_type("unknown_file.json") is None
 
 
 class TestGetRubricContent:

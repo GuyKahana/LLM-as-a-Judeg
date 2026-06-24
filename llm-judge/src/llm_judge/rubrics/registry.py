@@ -37,15 +37,6 @@ def get_rubric_name(filename: str) -> Optional[str]:
     return None
 
 
-def get_golden_type(filename: str) -> Optional[str]:
-    """Return the golden-set key for *filename*.
-
-    Golden examples are keyed off the rubric name (one golden set per filename
-    type), so this is just an alias for get_rubric_name.
-    """
-    return get_rubric_name(filename)
-
-
 def get_rubric_content(rubric_name: str) -> str:
     """Load and return the markdown prompt for *rubric_name*.
 
