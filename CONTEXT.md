@@ -17,10 +17,17 @@ The concrete storage technology serving a root: `gcs`, `local`, `s3`, or `azure`
 `GOLDEN_STORAGE_PROVIDER`) can give one root a different backend.
 
 ## Compute location vs storage location
-Two **independent** axes, historically conflated as "local run" vs "cloud run":
+Two axes that are **independent by mechanism** but **co-located by policy**:
 - **Compute location** — where the judge *process* runs (laptop vs Cloud Run Job).
 - **Storage location** — which provider each root uses.
-Running on a laptop does **not** imply local storage, and vice versa.
+
+The per-root providers make these technically independent — a laptop run *can*
+read from `gcs`. But the intended operating convention is **co-location**: the
+judge reads and writes from the same place it runs (all-`local` in dev,
+all-cloud once fully deployed). [Mixed storage](#mixed-storage) is therefore a
+**transitional migration aid**, not the steady state — useful while seeding
+local verdicts/goldens from cloud logs, but a fully-deployed system uses one
+provider for every root.
 
 ## Mixed storage
 A configuration where the storage roots do not all use the same provider — e.g.
