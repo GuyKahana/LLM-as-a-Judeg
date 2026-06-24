@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     storage_provider: str = "gcs"
     local_storage_base_dir: str = "local-data"
 
+    # Per-root provider overrides.  Each is optional; when unset it falls back
+    # to ``storage_provider`` (golden falls back to the *verdict* provider,
+    # mirroring how ``golden_bucket`` defaults to ``verdict_bucket``).  This lets
+    # a single root use a different backend than the rest — e.g. read production
+    # logs from GCS while writing verdicts to the local filesystem.
+    production_storage_provider: Optional[str] = None
+    verdict_storage_provider: Optional[str] = None
+    golden_storage_provider: Optional[str] = None
+
     # -------------------------------------------------------------------------
     # Buckets / roots (bucket names for GCS; subdirectory names for local)
     # -------------------------------------------------------------------------
@@ -67,6 +76,7 @@ class Settings(BaseSettings):
     judge_max_workers: int = 5
     judge_input_truncate_chars: int = 150_000
     judge_parse_error_threshold: int = 10
+    judge_golden_examples_max: int = 2
 
     # -------------------------------------------------------------------------
     # Alerting
@@ -97,6 +107,41 @@ class Settings(BaseSettings):
         """If GOLDEN_BUCKET is not supplied, default it to VERDICT_BUCKET."""
         if self.golden_bucket is None:
             self.golden_bucket = self.verdict_bucket
+        return self
+
+    @model_validator(mode="after")
+    def resolve_per_root_providers(self) -> "Settings":
+        """Fill in each per-root provider from the appropriate fallback.
+
+        production/verdict fall back to ``storage_provider``; golden falls back
+        to the (already-resolved) verdict provider, mirroring how ``golden_bucket``
+        defaults to ``verdict_bucket``.  After this runs, all three are concrete
+        strings, so :class:`StorageClient` never has to know about the fallback.
+        """
+        if self.production_storage_provider is None:
+            self.production_storage_provider = self.storage_provider
+        if self.verdict_storage_provider is None:
+            self.verdict_storage_provider = self.storage_provider
+        if self.golden_storage_provider is None:
+            self.golden_storage_provider = self.verdict_storage_provider
+        return self
+
+    @model_validator(mode="after")
+    def resolve_local_storage_base_dir(self) -> "Settings":
+        """Anchor a relative LOCAL_STORAGE_BASE_DIR to the project root.
+
+        Otherwise the path resolves against each process's current working
+        directory, so a dashboard and a runner subprocess launched from
+        different directories would read/write *different* ``local-data`` trees
+        and local runs would silently vanish from the dashboard. Absolute paths
+        are left untouched.
+        """
+        from pathlib import Path
+
+        base = Path(self.local_storage_base_dir)
+        if not base.is_absolute():
+            project_root = Path(__file__).resolve().parents[2]  # …/llm-judge
+            self.local_storage_base_dir = str((project_root / base).resolve())
         return self
 
     @model_validator(mode="after")

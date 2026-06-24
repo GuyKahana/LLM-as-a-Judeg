@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 1 — Architecture Overview</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #2563eb;
+    --border: #e0e0d8;
+    --code-bg: #f0efe8;
+    --correct: #16a34a;
+    --wrong: #dc2626;
+    --highlight: #fffbeb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Georgia", serif;
+    font-size: 18px;
+    line-height: 1.75;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; font-weight: 700; margin: 1.5rem 0 0.4rem; }
+  p  { margin-bottom: 1rem; }
+
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 2rem; font-family: monospace; }
+
+  code {
+    font-family: "Menlo", "Courier New", monospace;
+    font-size: 0.82em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Architecture diagram */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1.25rem 1.5rem;
+    font-family: "Menlo", monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  /* Module table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+  }
+  th {
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    font-family: monospace;
+    font-size: 0.82rem;
+  }
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  td:first-child {
+    font-family: monospace;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    color: var(--accent);
+  }
+
+  /* Layer badges */
+  .layer {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-family: monospace;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    border: 1px solid;
+    margin-right: 0.3em;
+  }
+  .layer-config  { color: #7c3aed; border-color: #7c3aed; background: #f5f3ff; }
+  .layer-data    { color: #0369a1; border-color: #0369a1; background: #f0f9ff; }
+  .layer-storage { color: #b45309; border-color: #b45309; background: #fffbeb; }
+  .layer-logic   { color: #16a34a; border-color: #16a34a; background: #f0fdf4; }
+  .layer-io      { color: #dc2626; border-color: #dc2626; background: #fef2f2; }
+  .layer-orch    { color: #1a1a1a; border-color: #6b6b6b; background: #f5f5f4; }
+
+  /* Quiz */
+  .quiz { margin-top: 3rem; border-top: 2px solid var(--border); padding-top: 2rem; }
+  .quiz-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .quiz-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+  .question { margin-bottom: 2rem; }
+  .question p { font-weight: 600; margin-bottom: 0.6rem; }
+
+  .options { display: flex; flex-direction: column; gap: 0.45rem; }
+  .option {
+    display: block;
+    padding: 0.55rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    background: white;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .option:hover { border-color: var(--accent); }
+  .option.correct  { border-color: var(--correct); background: #f0fdf4; color: var(--correct); font-weight: 600; }
+  .option.wrong    { border-color: var(--wrong);   background: #fef2f2; color: var(--wrong); }
+  .option.disabled { cursor: default; }
+
+  .feedback {
+    font-size: 0.88rem;
+    margin-top: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 4px;
+    display: none;
+  }
+  .feedback.correct { display: block; background: #f0fdf4; color: var(--correct); }
+  .feedback.wrong   { display: block; background: #fef2f2; color: var(--wrong); }
+
+  .score-box {
+    margin-top: 2rem;
+    padding: 1rem 1.25rem;
+    background: var(--highlight);
+    border: 1px solid #fde68a;
+    border-radius: 5px;
+    font-size: 1rem;
+    display: none;
+  }
+
+  /* Primary source */
+  .primary-source {
+    margin-top: 3rem;
+    padding: 1rem 1.25rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .primary-source strong { display: block; margin-bottom: 0.25rem; }
+
+  /* Ask your teacher */
+  .ask-teacher {
+    margin-top: 2.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .ask-teacher strong { display: block; margin-bottom: 0.25rem; }
+</style>
+</head>
+<body>
+
+<p class="meta">LESSON 1 of ? &nbsp;·&nbsp; Architecture Overview &nbsp;·&nbsp; ~15 min</p>
+<h1>How the LLM Judge Works End-to-End</h1>
+<p style="color:var(--muted); font-size:0.95rem; margin-bottom:2rem;">
+  You built this. Now let's understand every piece of it.
+</p>
+
+<h2>The one-sentence summary</h2>
+<p>
+  The LLM Judge is a <strong>daily batch service</strong> that reads prompt logs from cloud storage,
+  sends each one to an LLM for scoring against a rubric, and writes a verdict back to storage —
+  then sends an alert digest summarising anything that scored below a threshold.
+</p>
+
+<h2>The data flow</h2>
+<p>Every run follows this path, top to bottom:</p>
+
+<div class="diagram">
+Storage (production bucket)
+    │  logs/{case_id}/{filename}.json
+    ▼
+<b>StorageClient</b>  ← list_logs_modified_since()
+    │  yields BlobMeta (case_id, filename, modified_time)
+    ▼
+<b>runner.py</b>  ← pre-filter: skip existing verdicts, skip unmapped filenames
+    │  for each remaining blob:
+    ├─ rubrics/registry → get_rubric_name(filename)
+    ├─ StorageClient    → read_log(case_id, filename) → raw dict
+    ├─ log_parser       → parse_log()    → ParsedTurn
+    ├─ golden_examples  → load_golden_examples()
+    ├─ evaluator        → evaluate_turn() → Verdict
+    └─ StorageClient    → write_verdict()
+    │
+    ▼
+<b>alerts.py</b>  ← build digest of flagged verdicts → webhook / email
+    │
+    ▼
+<b>RunSummary</b> written to storage (runs/{run_id}.json)
+</div>
+
+<h2>The modules</h2>
+<p>There are <strong>12 source files</strong> you need to know. Here they are by layer:</p>
+
+<table>
+  <tr>
+    <th>File</th>
+    <th>Layer</th>
+    <th>What it does</th>
+  </tr>
+  <tr>
+    <td>config.py</td>
+    <td><span class="layer layer-config">config</span></td>
+    <td>Reads ALL configuration from environment variables. One <code>Settings</code> object, injected everywhere.</td>
+  </tr>
+  <tr>
+    <td>models.py</td>
+    <td><span class="layer layer-data">data</span></td>
+    <td>Defines the data shapes: <code>BlobMeta</code>, <code>ParsedTurn</code>, <code>Verdict</code>, <code>FlaggedItem</code>, <code>RunSummary</code>.</td>
+  </tr>
+  <tr>
+    <td>log_parser.py</td>
+    <td><span class="layer layer-logic">logic</span></td>
+    <td>Detects which of 4 log schemas a file uses and normalises it into a <code>ParsedTurn</code>.</td>
+  </tr>
+  <tr>
+    <td>rubrics/registry.py</td>
+    <td><span class="layer layer-logic">logic</span></td>
+    <td>Maps log filenames to rubric names using regex patterns. First match wins.</td>
+  </tr>
+  <tr>
+    <td>rubrics/prompts/*.md</td>
+    <td><span class="layer layer-logic">logic</span></td>
+    <td>The actual scoring criteria — one markdown file per rubric family (e.g. <code>final_summary.md</code>).</td>
+  </tr>
+  <tr>
+    <td>golden_examples.py</td>
+    <td><span class="layer layer-logic">logic</span></td>
+    <td>Loads up to 2 reference "ideal" examples from storage for a given rubric. Used to calibrate the judge.</td>
+  </tr>
+  <tr>
+    <td>llm_client.py</td>
+    <td><span class="layer layer-io">I/O</span></td>
+    <td>Thin wrapper around the Anthropic SDK. Sends a system + user message, returns the raw text response.</td>
+  </tr>
+  <tr>
+    <td>evaluator.py</td>
+    <td><span class="layer layer-logic">logic</span></td>
+    <td>Builds the judge prompt, calls <code>LLMClient</code>, parses the JSON response into a <code>Verdict</code>. Retries once on parse failure.</td>
+  </tr>
+  <tr>
+    <td>storage/base.py</td>
+    <td><span class="layer layer-storage">storage</span></td>
+    <td>Abstract interface: <code>list_files</code>, <code>read_file</code>, <code>write_file</code>, <code>file_exists</code>. Every backend implements this.</td>
+  </tr>
+  <tr>
+    <td>storage/factory.py</td>
+    <td><span class="layer layer-storage">storage</span></td>
+    <td>Reads <code>STORAGE_PROVIDER</code> from config and returns the right backend (gcs / s3 / azure / local).</td>
+  </tr>
+  <tr>
+    <td>storage/client.py</td>
+    <td><span class="layer layer-storage">storage</span></td>
+    <td>High-level judge operations (<code>read_log</code>, <code>write_verdict</code>, etc.) built on top of three <code>StorageProvider</code> instances: prod, verdict, golden.</td>
+  </tr>
+  <tr>
+    <td>runner.py</td>
+    <td><span class="layer layer-orch">orchestration</span></td>
+    <td>The "main loop". Lists blobs → filters → caps → evaluates in parallel (ThreadPoolExecutor) → writes verdicts → returns <code>RunSummary</code>.</td>
+  </tr>
+  <tr>
+    <td>alerts.py</td>
+    <td><span class="layer layer-io">I/O</span></td>
+    <td>Sends a daily digest of flagged verdicts via webhook (Slack/Teams) and/or SMTP email.</td>
+  </tr>
+  <tr>
+    <td>cli.py</td>
+    <td><span class="layer layer-io">I/O</span></td>
+    <td>Command-line entry point. Parses args, loads <code>Settings</code>, calls <code>run_batch()</code>.</td>
+  </tr>
+  <tr>
+    <td>logging_setup.py</td>
+    <td><span class="layer layer-config">config</span></td>
+    <td>Configures structured JSON logging to stdout (for Cloud Run / log aggregators).</td>
+  </tr>
+</table>
+
+<h2>The storage abstraction layer</h2>
+<p>
+  There are <em>three</em> storage layers worth distinguishing:
+</p>
+<ul style="margin: 0.5rem 0 1.25rem 1.5rem; line-height: 2;">
+  <li><strong><code>storage/base.py</code></strong> — the abstract interface (an ABC with 4 methods)</li>
+  <li><strong><code>storage/gcs.py</code>, <code>s3.py</code>, <code>azure.py</code>, <code>local.py</code></strong> — the concrete backends</li>
+  <li><strong><code>storage/client.py</code></strong> — the judge-specific façade on top: it holds three providers (prod, verdict, golden) and exposes domain operations</li>
+</ul>
+<p>
+  Why this design? The judge doesn't care whether it's talking to GCS, S3, or a local folder.
+  Any module that needs to read/write only touches <code>StorageClient</code> — never a cloud SDK directly.
+</p>
+
+<h2>The four log schemas</h2>
+<p>
+  Production writes logs in one of four formats. <code>log_parser.py</code> auto-detects which by
+  inspecting the JSON keys — detection happens in this exact priority order:
+</p>
+<table>
+  <tr><th>Schema</th><th>Key signature (detection rule)</th><th>Real example</th></tr>
+  <tr><td>duplicate_check</td><td>has <code>input1</code> AND <code>input2</code></td><td><code>check_duplication_1&lt;&gt;2.json</code></td></tr>
+  <tr><td>tool_use</td><td>has <code>prompt</code> AND <code>output</code> is a dict</td><td><code>filter_diagnoses.json</code> — prompt exists, output is <code>{"diagnoses":[…]}</code></td></tr>
+  <tr><td>standard</td><td>has <code>prompt</code> AND <code>output</code> is a string</td><td><code>final_summary.json</code></td></tr>
+  <tr><td>boundary_check</td><td>no <code>prompt</code> key at all</td><td><code>{input: "…", output: "yes"}</code> — only input + output, no prompt</td></tr>
+</table>
+
+<p>
+  <strong>Important distinction:</strong> the schema variant (detected above) and the rubric name (from the registry) are independent.
+  <code>filter_diagnoses.json</code> has schema variant <code>tool_use</code> AND rubric <code>grouping_boundary</code> — the names sound similar but come from two completely different systems.
+</p>
+<p>All four are normalised into the same <code>ParsedTurn</code> shape before evaluation.</p>
+
+<h2>Key design decisions</h2>
+<p>A few things that may look odd until you understand the reason:</p>
+<ul style="margin: 0.5rem 0 1.25rem 1.5rem; line-height: 2.1;">
+  <li><strong>Read-only production bucket</strong> — the judge never writes back to production logs, only to a separate verdict bucket. Isolation by design.</li>
+  <li><strong>Skip existing verdicts</strong> — idempotency: re-running the job doesn't re-evaluate or overwrite already-judged logs.</li>
+  <li><strong>Retry once on parse error</strong> — if the LLM returns malformed JSON, <code>evaluator.py</code> sends a correction prompt and tries once more before marking <code>parse_error=True</code>.</li>
+  <li><strong>ThreadPoolExecutor</strong> — evaluating 500 logs sequentially would be slow. Workers run evaluations in parallel, controlled by <code>JUDGE_MAX_WORKERS</code>.</li>
+</ul>
+
+<!-- ── QUIZ ─────────────────────────────────────────────────── -->
+<div class="quiz">
+  <p class="quiz-title">Self-check — 5 questions</p>
+  <p class="quiz-sub">Test your recall. No peeking. Click an answer to see immediate feedback.</p>
+
+  <!-- Q1 -->
+  <div class="question" id="q1">
+    <p>1. Which module is responsible for detecting whether a log file uses the <em>boundary_check</em> schema?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q1')">rubrics/registry.py</span>
+      <span class="option" onclick="answer(this, true,  'q1')">log_parser.py</span>
+      <span class="option" onclick="answer(this, false, 'q1')">evaluator.py</span>
+      <span class="option" onclick="answer(this, false, 'q1')">storage/client.py</span>
+    </div>
+    <div class="feedback" id="q1-feedback"></div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="question" id="q2">
+    <p>2. The runner skips a log file if a verdict already exists. Which method in <code>StorageClient</code> checks this?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q2')">read_log()</span>
+      <span class="option" onclick="answer(this, false, 'q2')">list_logs_modified_since()</span>
+      <span class="option" onclick="answer(this, true,  'q2')">verdict_exists()</span>
+      <span class="option" onclick="answer(this, false, 'q2')">file_exists()</span>
+    </div>
+    <div class="feedback" id="q2-feedback"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="question" id="q3">
+    <p>3. A log file named <code>check_duplication_1&lt;&gt;2.json</code> is discovered. Which rubric name does <code>rubrics/registry.py</code> return for it?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q3')">grouping_boundary</span>
+      <span class="option" onclick="answer(this, false, 'q3')">extraction_list</span>
+      <span class="option" onclick="answer(this, false, 'q3')">classifier</span>
+      <span class="option" onclick="answer(this, true,  'q3')">duplicate_check</span>
+    </div>
+    <div class="feedback" id="q3-feedback"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="question" id="q4">
+    <p>4. The evaluator calls the LLM and gets back invalid JSON. What happens next?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q4')">It raises an exception and the whole run stops</span>
+      <span class="option" onclick="answer(this, true,  'q4')">It sends a correction prompt and tries a second time</span>
+      <span class="option" onclick="answer(this, false, 'q4')">It writes a verdict with score=0 immediately</span>
+      <span class="option" onclick="answer(this, false, 'q4')">It calls a different LLM model as a fallback</span>
+    </div>
+    <div class="feedback" id="q4-feedback"></div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="question" id="q5">
+    <p>5. Which layer would you modify if you wanted to add support for a new cloud storage provider (e.g. Cloudflare R2)?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q5')">storage/client.py only</span>
+      <span class="option" onclick="answer(this, false, 'q5')">runner.py and evaluator.py</span>
+      <span class="option" onclick="answer(this, true,  'q5')">A new storage/r2.py implementing StorageProvider, plus storage/factory.py</span>
+      <span class="option" onclick="answer(this, false, 'q5')">config.py only</span>
+    </div>
+    <div class="feedback" id="q5-feedback"></div>
+  </div>
+
+  <div class="score-box" id="score-box"></div>
+</div>
+
+<!-- ── PRIMARY SOURCE ─────────────────────────────────────── -->
+<div class="primary-source">
+  <strong>Primary source for this lesson</strong>
+  Read <code>../SPEC.md</code> in this repo — it's the original implementation specification.
+  It explains <em>why</em> every design decision was made: the read-only bucket constraint,
+  the storage abstraction, the four schemas, and the judging approach. It's the authoritative
+  companion to the code.
+</div>
+
+<!-- ── ASK YOUR TEACHER ───────────────────────────────────── -->
+<div class="ask-teacher">
+  <strong>Questions? Ask your teacher.</strong>
+  Type your question in the chat — the agent can explain any module in more depth,
+  walk through a specific file line by line, or design the next lesson around whatever
+  feels unclear.
+</div>
+
+<!-- ── NEXT LESSON ────────────────────────────────────────── -->
+<p style="margin-top: 2.5rem; color: var(--muted); font-size: 0.88rem;">
+  Next: <strong>Lesson 2</strong> will go deep on the data models —
+  <code>ParsedTurn</code>, <code>Verdict</code>, and <code>RunSummary</code>
+  — and why each field exists.
+</p>
+
+<script>
+  const EXPLANATIONS = {
+    q1: {
+      correct: "Correct. <code>log_parser.py</code> inspects the JSON keys to detect the schema. The registry maps filenames to rubric names — a different job.",
+      wrong:   "Not quite. <code>log_parser.py</code> handles schema detection. It checks for keys like <code>input1/input2</code>, <code>prompt</code>, and dict vs. string <code>output</code>."
+    },
+    q2: {
+      correct: "Correct. <code>verdict_exists()</code> in <code>StorageClient</code> checks the verdict root (not the production root). <code>file_exists()</code> is the lower-level method it calls on the provider.",
+      wrong:   "<code>verdict_exists()</code> in <code>StorageClient</code> does this check. It's deliberately separate from the raw <code>file_exists()</code> on the provider — it knows the verdict path convention."
+    },
+    q3: {
+      correct: "Correct. The registry pattern <code>^check_duplication_\\d+&lt;&gt;\\d+\\.json$</code> maps to the <code>duplicate_check</code> rubric. See <code>rubrics/registry.py</code> line 36.",
+      wrong:   "The registry pattern <code>^check_duplication_\\d+&lt;&gt;\\d+\\.json$</code> maps to <code>duplicate_check</code>. First match in the RUBRIC_PATTERNS list wins."
+    },
+    q4: {
+      correct: "Correct. <code>evaluator.py</code> catches the first parse failure, builds a correction message ('Your previous response was not valid JSON…'), and tries once more. Only if the second attempt also fails does it return <code>parse_error=True</code>.",
+      wrong:   "The evaluator retries exactly once. It sends a correction prompt asking for JSON-only output. If that also fails, it returns a <code>Verdict</code> with <code>parse_error=True</code>."
+    },
+    q5: {
+      correct: "Correct. <code>StorageProvider</code> (base.py) is the contract. You add a new concrete class in <code>storage/r2.py</code>, then add a branch in <code>storage/factory.py</code>. Nothing else in the codebase changes.",
+      wrong:   "The storage abstraction is designed for exactly this. Add a new file implementing <code>StorageProvider</code>, then register it in <code>storage/factory.py</code>. The rest of the system doesn't need to know."
+    }
+  };
+
+  let answered = {};
+  let correct = 0;
+  const total = 5;
+
+  function answer(el, isCorrect, qid) {
+    if (answered[qid]) return;
+    answered[qid] = true;
+
+    const siblings = el.parentElement.querySelectorAll('.option');
+    siblings.forEach(o => o.classList.add('disabled'));
+
+    const feedback = document.getElementById(qid + '-feedback');
+    if (isCorrect) {
+      el.classList.add('correct');
+      feedback.className = 'feedback correct';
+      feedback.innerHTML = EXPLANATIONS[qid].correct;
+      correct++;
+    } else {
+      el.classList.add('wrong');
+      feedback.className = 'feedback wrong';
+      feedback.innerHTML = EXPLANATIONS[qid].wrong;
+      // Show the correct one
+      siblings.forEach(o => {
+        if (o.onclick && o.onclick.toString().includes('true')) {
+          o.classList.add('correct');
+        }
+      });
+    }
+
+    if (Object.keys(answered).length === total) {
+      const box = document.getElementById('score-box');
+      box.style.display = 'block';
+      const pct = Math.round((correct / total) * 100);
+      if (pct === 100) {
+        box.innerHTML = `🎯 ${correct}/${total} — Perfect. You have a solid mental model of this architecture.`;
+      } else if (pct >= 60) {
+        box.innerHTML = `${correct}/${total} (${pct}%) — Good. Review the questions you missed, then read the SPEC.md sections they reference.`;
+      } else {
+        box.innerHTML = `${correct}/${total} (${pct}%) — Re-read the Architecture section above, then try again by refreshing this page.`;
+      }
+    }
+  }
+</script>
+
+</body>
+</html>

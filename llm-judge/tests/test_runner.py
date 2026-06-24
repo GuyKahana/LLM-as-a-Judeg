@@ -12,15 +12,15 @@ from llm_judge.models import BlobMeta, Verdict
 from llm_judge.runner import run_batch
 
 
-def _make_blob(case_id: str = "case-001", filename: str = "final_summary.json") -> BlobMeta:
+def _make_blob(case_id: str = "case-001", filename: str = "full_summary.json") -> BlobMeta:
     return BlobMeta(case_id=case_id, filename=filename, modified_time=datetime.now(tz=timezone.utc))
 
 
-def _make_verdict(case_id: str = "case-001", filename: str = "final_summary.json", flagged: bool = False) -> Verdict:
+def _make_verdict(case_id: str = "case-001", filename: str = "full_summary.json", flagged: bool = False) -> Verdict:
     return Verdict(
         case_id=case_id,
         filename=filename,
-        prompt_type="final_summary",
+        prompt_type="full_summary",
         schema_variant="standard",
         score=4,
         per_criterion={},
@@ -34,10 +34,10 @@ def _make_verdict(case_id: str = "case-001", filename: str = "final_summary.json
 def mock_gcs(mock_gcs_client):
     """GCS client with one discoverable blob."""
     mock_gcs_client.list_logs_modified_since.return_value = iter([
-        _make_blob("case-001", "final_summary.json"),
+        _make_blob("case-001", "full_summary.json"),
     ])
     mock_gcs_client.list_all_logs_for_case.return_value = iter([
-        _make_blob("case-001", "final_summary.json"),
+        _make_blob("case-001", "full_summary.json"),
     ])
     mock_gcs_client.read_log.return_value = {
         "prompt": "Summarize.",
@@ -85,8 +85,8 @@ class TestErrorHandling:
     def test_exception_in_evaluation_increments_errors_and_continues(self, mock_gcs, mock_llm_client, config):
         """One blob raises, run still completes with errors=1."""
         mock_gcs.list_logs_modified_since.return_value = iter([
-            _make_blob("case-001", "final_summary.json"),
-            _make_blob("case-002", "final_summary.json"),
+            _make_blob("case-001", "full_summary.json"),
+            _make_blob("case-002", "full_summary.json"),
         ])
         mock_gcs.read_log.return_value = {"prompt": "x", "input": "y", "output": "z"}
 
@@ -128,7 +128,7 @@ class TestCaseIdIgnoresLookback:
 class TestMaxTurnsCap:
     def test_capped_at_max_turns(self, mock_gcs, mock_llm_client, config):
         config.judge_max_turns_per_run = 2
-        blobs = [_make_blob(f"case-{i:03d}", "final_summary.json") for i in range(10)]
+        blobs = [_make_blob(f"case-{i:03d}", "full_summary.json") for i in range(10)]
         mock_gcs.list_logs_modified_since.return_value = iter(blobs)
         mock_gcs.read_log.return_value = {"prompt": "x", "input": "y", "output": "z"}
 

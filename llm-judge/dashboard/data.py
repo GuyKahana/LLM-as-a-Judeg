@@ -41,6 +41,18 @@ def _get_storage_client():
 # ---------------------------------------------------------------------------
 
 
+def runs_location_hint() -> str:
+    """Human-readable description of where run summaries are expected to live."""
+    _client, config = _get_storage_client()
+    base = ""
+    if config.verdict_storage_provider == "local":
+        base = f"{config.local_storage_base_dir}/"
+    return (
+        f"{base}{config.verdict_bucket}/{config.runs_prefix} "
+        f"(provider: {config.verdict_storage_provider})"
+    )
+
+
 @st.cache_data(ttl=30)
 def load_runs() -> list[dict]:
     """Load all run summary files from {verdict_bucket}/{runs_prefix}*.json.
@@ -126,18 +138,53 @@ def load_source_log(case_id: str, filename: str) -> Optional[dict]:
         return None
 
 
-@st.cache_data(ttl=30)
-def list_cases() -> list[str]:
-    """List distinct case_id directories under prod/logs/.
+def local_run_env() -> dict[str, str]:
+    """Return an environment dict that forces a runner subprocess fully local.
 
-    Falls back to extracting case_ids from verdicts if prod listing fails.
+    A local run must read logs, write verdicts, AND read goldens from the local
+    filesystem — co-location (see CONTEXT.md). Because per-root provider
+    overrides win over ``STORAGE_PROVIDER`` in :class:`Settings`, we have to pin
+    *all four* variables, otherwise a hybrid ``.env`` (e.g.
+    ``PRODUCTION_STORAGE_PROVIDER=gcs``) would leak the run back to the cloud.
     """
-    client, _config = _get_storage_client()
+    import os
 
-    # Try listing from prod logs
+    env = os.environ.copy()
+    env["STORAGE_PROVIDER"] = "local"
+    env["PRODUCTION_STORAGE_PROVIDER"] = "local"
+    env["VERDICT_STORAGE_PROVIDER"] = "local"
+    env["GOLDEN_STORAGE_PROVIDER"] = "local"
+    return env
+
+
+def _production_provider(source: str):
+    """Return the StorageProvider to search for production logs.
+
+    ``source="cloud"`` uses the configured production root (GCS in a hybrid
+    setup). ``source="local"`` builds a LocalStorageProvider rooted at
+    ``<LOCAL_STORAGE_BASE_DIR>/<PRODUCTION_BUCKET>``, independent of
+    ``PRODUCTION_STORAGE_PROVIDER`` — so the UI can browse local test cases
+    while real runs still read from the cloud.
+    """
+    client, config = _get_storage_client()
+    if source == "local":
+        from llm_judge.storage.factory import create_provider
+
+        return create_provider(config.production_bucket, config, "local")
+    return client._prod
+
+
+@st.cache_data(ttl=30)
+def list_cases(source: str = "cloud") -> list[str]:
+    """List distinct case_id directories under ``logs/`` for *source*.
+
+    Falls back to extracting case_ids from verdicts if listing fails.
+    """
+    provider = _production_provider(source)
+
     try:
         seen: set[str] = set()
-        for path, _mtime in client._prod.list_files("logs/"):
+        for path, _mtime in provider.list_files("logs/"):
             parts = path.split("/")
             if len(parts) >= 3:  # must be logs/{case_id}/{filename}
                 candidate = parts[1]
@@ -146,24 +193,47 @@ def list_cases() -> list[str]:
         if seen:
             return sorted(seen)
     except Exception as exc:
-        logger.warning("Could not list prod logs: %s", exc)
+        logger.warning("Could not list %s logs: %s", source, exc)
+
+    if source == "local":
+        return []  # no verdict fallback for local browsing
 
     # Fallback: derive from verdicts
     verdicts = load_verdicts()
     return sorted({v["case_id"] for v in verdicts if v.get("case_id")})
 
 
+@st.cache_data(ttl=30)
+def lookup_case_files(case_id: str, source: str = "cloud") -> list[str]:
+    """Return the sorted log filenames for *case_id* under *source*.
+
+    Used by the Trigger view to verify a typed case ID exists (and show what
+    will be evaluated) before launching a run. An empty list means the case was
+    not found under ``logs/{case_id}/``. ``source`` is ``"cloud"`` (the
+    configured production root) or ``"local"`` (the local filesystem).
+    """
+    provider = _production_provider(source)
+    prefix = f"logs/{case_id}/"
+    files = [path.split("/")[-1] for path, _mtime in provider.list_files(prefix)]
+    return sorted(f for f in files if f)
+
+
 def upload_case_logs(case_id: str, files: list[tuple[str, bytes]]) -> list[str]:
-    """Write uploaded log files to the production bucket under logs/{case_id}/.
+    """Write uploaded log files to the LOCAL production root under logs/{case_id}/.
+
+    Upload Case is a local-testing tool: cases are always written to the local
+    filesystem (regardless of PRODUCTION_STORAGE_PROVIDER), so the subsequent
+    all-local "Run judge" reads exactly these files and the case is browsable
+    via the Trigger view's "Local files" source.
 
     *files* is a list of (filename, raw_bytes) pairs.
     Returns the list of filenames that were written successfully.
     """
-    client, _config = _get_storage_client()
+    provider = _production_provider("local")
     written: list[str] = []
     for filename, content in files:
         path = f"logs/{case_id}/{filename}"
-        client._prod.write_file(path, content.decode("utf-8"))
+        provider.write_file(path, content.decode("utf-8"))
         written.append(filename)
     # Invalidate case list cache so the new case appears immediately
     list_cases.clear()
@@ -177,8 +247,6 @@ def upload_case_logs(case_id: str, files: list[tuple[str, bytes]]) -> list[str]:
 
 def _synthesise_runs_from_verdicts(client, config) -> list[dict]:
     """Build fake RunSummary-like dicts grouped by case_id from verdict files."""
-    from collections import defaultdict
-
     verdicts = load_verdicts()
     by_case: dict[str, list[dict]] = defaultdict(list)
     for v in verdicts:

@@ -94,17 +94,21 @@ def render() -> None:
             if dry_run:
                 cmd += ["--dry-run"]
 
-            st.info(f"Running: `{' '.join(cmd)}`")
+            st.info(f"Running: `{' '.join(cmd)}`  (source: local)")
             output_lines: list[str] = []
             placeholder = st.empty()
 
             try:
+                # Uploaded cases live on the local filesystem, so the run must
+                # be fully local too — otherwise it would read from the
+                # configured (possibly cloud) production root and find nothing.
                 proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
                     bufsize=1,
+                    env=data.local_run_env(),
                 )
 
                 while True:

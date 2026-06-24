@@ -76,7 +76,13 @@ Thumbs.db
 # Local storage dev data
 local-data/
 
+# Judge debug dumps — contain raw production turns (medical PII). Never commit.
+debug-dumps/
+
 # GCP credentials
 *.json
 !tests/fixtures/*.json
+# Bundled golden examples ship with the package (fallback when the golden
+# bucket is empty) — keep them out of the blanket *.json ignore above.
+!src/llm_judge/rubrics/golden/**/*.json
 gcp-key.json

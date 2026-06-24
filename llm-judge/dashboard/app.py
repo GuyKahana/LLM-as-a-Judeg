@@ -24,7 +24,7 @@ import streamlit as st
 st.set_page_config(
     page_title="LLM Judge Dashboard",
     layout="wide",
-    page_icon="⚖️",
+    page_icon=None,
 )
 
 # ---------------------------------------------------------------------------
@@ -57,16 +57,8 @@ VIEWS = ["Runs", "Run Detail", "Verdicts Explorer", "Trigger", "Upload Case"]
 if "current_view" not in st.session_state:
     st.session_state["current_view"] = "Runs"
 
-VIEW_ICONS = {
-    "Runs": "📋",
-    "Run Detail": "🔍",
-    "Verdicts Explorer": "📊",
-    "Trigger": "▶️",
-    "Upload Case": "📤",
-}
-
 with st.sidebar:
-    st.title("⚖️ LLM Judge")
+    st.title("LLM Judge")
     st.divider()
 
     st.markdown(
@@ -99,15 +91,14 @@ with st.sidebar:
 
     current = st.session_state["current_view"]
     for view_name in VIEWS:
-        icon = VIEW_ICONS.get(view_name, "•")
-        label = f"{icon}  {view_name}"
+        label = view_name
         is_active = view_name == current
         if st.button(label, key=f"nav_{view_name}", width="stretch", disabled=is_active):
             st.session_state["current_view"] = view_name
             st.rerun()
 
     st.divider()
-    if st.button("🔄  Refresh data", width="stretch"):
+    if st.button("Refresh data", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 

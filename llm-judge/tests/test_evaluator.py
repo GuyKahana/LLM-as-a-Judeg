@@ -126,6 +126,33 @@ class TestRetryAndParseError:
         assert verdict.score == 5
         assert verdict.parse_error is False
 
+    def test_null_score_triggers_retry(self, mock_llm_client, config):
+        """A null score counts as a parse failure and triggers the retry."""
+        valid = json.dumps({
+            "score": 4,
+            "per_criterion": {},
+            "flagged": False,
+            "reasoning": "ok",
+        })
+        mock_llm_client.judge.side_effect = [
+            json.dumps({"score": None, "per_criterion": {}, "flagged": False, "reasoning": "unsure"}),
+            valid,
+        ]
+        turn = _make_turn()
+        verdict = evaluate_turn(turn, RUBRIC_CONTENT, GOLDEN_EXAMPLES, mock_llm_client, config, "final_summary")
+        assert mock_llm_client.judge.call_count == 2
+        assert verdict.score == 4
+        assert verdict.parse_error is False
+
+    def test_non_numeric_score_both_attempts_returns_parse_error(self, mock_llm_client, config):
+        """A non-numeric score on both attempts → parse_error, never a hard error."""
+        bad = json.dumps({"score": "high", "per_criterion": {}, "flagged": False, "reasoning": "x"})
+        mock_llm_client.judge.side_effect = [bad, bad]
+        turn = _make_turn()
+        verdict = evaluate_turn(turn, RUBRIC_CONTENT, GOLDEN_EXAMPLES, mock_llm_client, config, "final_summary")
+        assert verdict.parse_error is True
+        assert verdict.score is None
+
 
 class TestTruncation:
     def test_long_input_truncated_for_standard(self, mock_llm_client, config):

@@ -9,45 +9,24 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # Pattern list – evaluated in order; first match wins.
 # Each tuple is (compiled_pattern, rubric_name).
+# Every distinct filename type has its own rubric (and prompt file).
+# Parameterised patterns share one rubric across their numeric variants.
 # ---------------------------------------------------------------------------
 RUBRIC_PATTERNS: list[tuple[re.Pattern, str]] = [
     # Exact filenames
-    (re.compile(r"^final_summary\.json$"), "final_summary"),
-    (re.compile(r"^full_summary\.json$"), "final_summary"),
-    (re.compile(r"^split_document_summaries\.json$"), "document_summaries"),
-    (re.compile(r"^findings\.json$"), "extraction_list"),
-    (re.compile(r"^surgeries\.json$"), "extraction_list"),
-    (re.compile(r"^sick_permits\.json$"), "extraction_list"),
-    (re.compile(r"^incidents\.json$"), "extraction_list"),
-    (re.compile(r"^disabilities\.json$"), "extraction_list"),
-    (re.compile(r"^adl_records\.json$"), "extraction_list"),
-    (re.compile(r"^accident_details\.json$"), "extraction_list"),
-    (re.compile(r"^clean_medications\.json$"), "extraction_list"),
-    (re.compile(r"^filter_diagnoses\.json$"), "grouping_boundary"),
-    (re.compile(r"^merge_diagnoses\.json$"), "grouping_boundary"),
-    (re.compile(r"^personal_details\.json$"), "personal_committee"),
-    (re.compile(r"^past_committees\.json$"), "personal_committee"),
+    (re.compile(r"^full_summary\.json$"), "full_summary"),
+    (re.compile(r"^split_document_summaries\.json$"), "split_document_summaries_by_dates"),
+    (re.compile(r"^sick_permits\.json$"), "sick_permits"),
+    (re.compile(r"^personal_details\.json$"), "personal_details"),
+    (re.compile(r"^past_committees\.json$"), "past_committees"),
     # Parameterised patterns
-    (re.compile(r"^Page\d+<>Page\d+\.json$"), "grouping_boundary"),
-    (re.compile(r"^medical_doc_\d+\.json$"), "document_summaries"),
-    (re.compile(r"^document_conditions_classifier_\d+\.json$"), "classifier"),
-    (re.compile(r"^diagnoses_by_date_classifier_\d+\.json$"), "classifier"),
-    (re.compile(r"^medical_doc_validator_\d+\.json$"), "classifier"),
-    (re.compile(r"^check_duplication_\d+<>\d+\.json$"), "duplicate_check"),
+    (re.compile(r"^Page\d+<>Page\d+\.json$"), "same_document"),
+    (re.compile(r"^medical_doc_\d+\.json$"), "medical_document"),
+    (re.compile(r"^medical_doc_validator_\d+\.json$"), "medical_document_validator"),
+    (re.compile(r"^check_duplication_\d+<>\d+\.json$"), "document_duplicate_check"),
 ]
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-# ---------------------------------------------------------------------------
-# Golden-type overrides – maps a filename pattern to a specific golden set
-# path (used as the prompt_type key for golden example lookup).
-# When a filename matches here the golden examples come from
-# golden/<golden_type>/ instead of golden/<rubric_name>/.
-# ---------------------------------------------------------------------------
-GOLDEN_TYPE_OVERRIDES: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"^merge_diagnoses\.json$"), "nursing_merge_diagnoses"),
-    (re.compile(r"^medical_doc_validator_\d+\.json$"), "nursing_medical_document_validator"),
-]
 
 
 def get_rubric_name(filename: str) -> Optional[str]:
@@ -56,19 +35,6 @@ def get_rubric_name(filename: str) -> Optional[str]:
         if pattern.match(filename):
             return name
     return None
-
-
-def get_golden_type(filename: str) -> Optional[str]:
-    """Return the golden-set key for *filename*.
-
-    Checks GOLDEN_TYPE_OVERRIDES first; falls back to get_rubric_name so that
-    files without an explicit override still load golden examples keyed by their
-    rubric name.
-    """
-    for pattern, golden_type in GOLDEN_TYPE_OVERRIDES:
-        if pattern.match(filename):
-            return golden_type
-    return get_rubric_name(filename)
 
 
 def get_rubric_content(rubric_name: str) -> str:

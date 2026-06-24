@@ -34,10 +34,19 @@ class StorageClient:
 
     def __init__(self, config: "Settings") -> None:
         self._config = config
-        self._prod: StorageProvider = create_provider(config.production_bucket, config)
-        self._verdict: StorageProvider = create_provider(config.verdict_bucket, config)
+        # Each root may use a different backend.  The per-root providers are
+        # resolved (with fallbacks) by the Settings model validator, so they are
+        # concrete strings by the time we get here.
+        self._prod: StorageProvider = create_provider(
+            config.production_bucket, config, config.production_storage_provider
+        )
+        self._verdict: StorageProvider = create_provider(
+            config.verdict_bucket, config, config.verdict_storage_provider
+        )
         # golden_bucket defaults to verdict_bucket (set by model_validator in config)
-        self._golden: StorageProvider = create_provider(config.golden_bucket, config)  # type: ignore[arg-type]
+        self._golden: StorageProvider = create_provider(
+            config.golden_bucket, config, config.golden_storage_provider  # type: ignore[arg-type]
+        )
 
     # ------------------------------------------------------------------
     # Production log reading (READ-ONLY on production root)
@@ -85,11 +94,17 @@ class StorageClient:
     # Golden examples (read from golden root)
     # ------------------------------------------------------------------
 
-    def read_golden_examples(self, prompt_type: str) -> list[dict]:
-        """Return up to 2 golden example dicts for *prompt_type*."""
+    def read_golden_examples(self, prompt_type: str, limit: Optional[int] = None) -> list[dict]:
+        """Return up to *limit* golden example dicts for *prompt_type*.
+
+        *limit* is the single cap on how many examples are read; it defaults to
+        ``config.judge_golden_examples_max`` when not supplied.
+        """
+        if limit is None:
+            limit = self._config.judge_golden_examples_max
         prefix = f"{self._config.golden_prefix}{prompt_type}/"
         paths_and_times = list(self._golden.list_files(prefix))
-        json_paths = [p for p, _ in paths_and_times if p.endswith(".json")][:2]
+        json_paths = [p for p, _ in paths_and_times if p.endswith(".json")][:limit]
 
         results: list[dict] = []
         for path in json_paths:

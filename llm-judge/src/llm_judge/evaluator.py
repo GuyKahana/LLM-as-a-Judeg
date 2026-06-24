@@ -31,6 +31,13 @@ def _parse_verdict_json(text: str) -> dict:
     for key in ("score", "per_criterion", "reasoning"):
         if key not in data:
             raise ValueError(f"Missing required key {key!r} in verdict JSON")
+    # Coerce score here so a null / non-numeric score is treated as a parse
+    # failure (and routed through the retry → parse_error path) rather than
+    # raising later in evaluate_turn, where it would surface as a hard run error.
+    try:
+        data["score"] = int(data["score"])
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid score {data['score']!r} in verdict JSON")
     return data
 
 
@@ -244,7 +251,7 @@ def evaluate_turn(
                 evaluated_at=now,
             )
 
-    score = int(data["score"])
+    score = data["score"]  # already coerced to int in _parse_verdict_json
     return Verdict(
         case_id=parsed_turn.case_id,
         filename=parsed_turn.filename,
