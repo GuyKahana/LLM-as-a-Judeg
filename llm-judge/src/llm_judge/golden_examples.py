@@ -47,7 +47,7 @@ def load_golden_examples(
     Golden JSONs must contain an ``"expected_verdict": "pass"`` field,
     indicating they are positive (high-quality) examples.
     """
-    examples = storage_client.read_golden_examples(prompt_type)
+    examples = storage_client.read_golden_examples(prompt_type, limit)
     source = "bucket"
     if not examples:
         examples = _load_bundled_examples(prompt_type, limit)
@@ -58,9 +58,9 @@ def load_golden_examples(
 
     if actual < limit:
         logger.warning(
-            "Configured JUDGE_GOLDEN_EXAMPLES_MAX=%d but only %d golden example(s) "
-            "available for prompt_type=%s (source=%s) — running with %d.",
-            limit, actual, prompt_type, source if actual else "none", actual,
+            "Only %d golden example(s) available for prompt_type=%s (source=%s) — "
+            "requested up to %d.",
+            actual, prompt_type, source if actual else "none", limit,
         )
     else:
         logger.info(

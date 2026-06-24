@@ -37,7 +37,7 @@ class TestLoadGoldenExamples:
     def test_prompt_type_forwarded_to_gcs(self, mock_gcs_client, config):
         mock_gcs_client.read_golden_examples.return_value = []
         load_golden_examples(mock_gcs_client, "extraction_list")
-        mock_gcs_client.read_golden_examples.assert_called_once_with("extraction_list")
+        mock_gcs_client.read_golden_examples.assert_called_once_with("extraction_list", 2)
 
     def test_bundled_fallback_used_when_bucket_empty(
         self, mock_gcs_client, config, tmp_path, monkeypatch
@@ -98,7 +98,7 @@ class TestLoadGoldenExamples:
             result = load_golden_examples(mock_gcs_client, "full_summary", limit=5)
         assert len(result) == 1
         assert any(
-            "only 1 golden example" in rec.message and "JUDGE_GOLDEN_EXAMPLES_MAX=5" in rec.message
+            "Only 1 golden example" in rec.message and "requested up to 5" in rec.message
             for rec in caplog.records
         )
 
@@ -110,7 +110,7 @@ class TestLoadGoldenExamples:
         with caplog.at_level("WARNING", logger="llm_judge.golden_examples"):
             result = load_golden_examples(mock_gcs_client, "full_summary", limit=2)
         assert result == []
-        assert any("only 0 golden example" in rec.message for rec in caplog.records)
+        assert any("Only 0 golden example" in rec.message for rec in caplog.records)
 
     def test_no_warning_when_actual_meets_limit(
         self, mock_gcs_client, config, tmp_path, monkeypatch, caplog

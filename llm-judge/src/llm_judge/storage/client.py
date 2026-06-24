@@ -94,11 +94,16 @@ class StorageClient:
     # Golden examples (read from golden root)
     # ------------------------------------------------------------------
 
-    def read_golden_examples(self, prompt_type: str) -> list[dict]:
-        """Return up to ``judge_golden_examples_max`` golden example dicts for *prompt_type*."""
+    def read_golden_examples(self, prompt_type: str, limit: Optional[int] = None) -> list[dict]:
+        """Return up to *limit* golden example dicts for *prompt_type*.
+
+        *limit* is the single cap on how many examples are read; it defaults to
+        ``config.judge_golden_examples_max`` when not supplied.
+        """
+        if limit is None:
+            limit = self._config.judge_golden_examples_max
         prefix = f"{self._config.golden_prefix}{prompt_type}/"
         paths_and_times = list(self._golden.list_files(prefix))
-        limit = self._config.judge_golden_examples_max
         json_paths = [p for p, _ in paths_and_times if p.endswith(".json")][:limit]
 
         results: list[dict] = []
