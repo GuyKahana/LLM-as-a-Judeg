@@ -110,12 +110,11 @@ def render() -> None:
         if lookback and not selected:
             cmd += ["--lookback-hours", str(int(lookback))]
 
-        # When the user picked Local, force the run's production root to local
-        # too, so it reads the same files the lookup found (the configured root
-        # may be GCS in a hybrid setup).
-        run_env = os.environ.copy()
-        if source == "local":
-            run_env["PRODUCTION_STORAGE_PROVIDER"] = "local"
+        # When the user picked Local, force the run fully local (all roots), so
+        # it reads the same files the lookup found AND writes verdicts/goldens
+        # locally — a local run is self-contained (see CONTEXT.md co-location).
+        # The configured root may be GCS in a hybrid setup.
+        run_env = data.local_run_env() if source == "local" else os.environ.copy()
 
         st.info(f"Running: `{' '.join(cmd)}`  (source: {source})")
 

@@ -126,6 +126,25 @@ def load_source_log(case_id: str, filename: str) -> Optional[dict]:
         return None
 
 
+def local_run_env() -> dict[str, str]:
+    """Return an environment dict that forces a runner subprocess fully local.
+
+    A local run must read logs, write verdicts, AND read goldens from the local
+    filesystem — co-location (see CONTEXT.md). Because per-root provider
+    overrides win over ``STORAGE_PROVIDER`` in :class:`Settings`, we have to pin
+    *all four* variables, otherwise a hybrid ``.env`` (e.g.
+    ``PRODUCTION_STORAGE_PROVIDER=gcs``) would leak the run back to the cloud.
+    """
+    import os
+
+    env = os.environ.copy()
+    env["STORAGE_PROVIDER"] = "local"
+    env["PRODUCTION_STORAGE_PROVIDER"] = "local"
+    env["VERDICT_STORAGE_PROVIDER"] = "local"
+    env["GOLDEN_STORAGE_PROVIDER"] = "local"
+    return env
+
+
 def _production_provider(source: str):
     """Return the StorageProvider to search for production logs.
 
