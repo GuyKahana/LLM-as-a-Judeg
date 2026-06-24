@@ -87,7 +87,9 @@ def calibrate() -> None:
     total_checked = 0
 
     for rubric_name in rubric_names:
-        examples = load_golden_examples(storage_client, rubric_name)
+        examples = load_golden_examples(
+            storage_client, rubric_name, limit=config.judge_golden_examples_max,
+        )
         if not examples:
             click.echo(f"[{rubric_name}] No golden examples found – skipping.")
             continue

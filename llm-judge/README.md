@@ -107,10 +107,30 @@ The local provider mirrors the GCS path structure under `LOCAL_STORAGE_BASE_DIR`
 ```bash
 mkdir -p local-data/prod/logs/case-001
 cp tests/fixtures/standard_log.json \
-   local-data/prod/logs/case-001/final_summary.json
+   local-data/prod/logs/case-001/full_summary.json
 
 python -m llm_judge run --dry-run
 ```
+
+---
+
+## Mixed Storage — Cloud Logs, Local Verdicts
+
+By default `STORAGE_PROVIDER` sets the backend for **all three** storage roots at once (production logs, verdicts, golden examples). You can override any single root with a per-root provider variable — each falls back to `STORAGE_PROVIDER` when unset, so existing configs are unaffected.
+
+The common case: run the judge on your laptop, **read** production logs from GCS (including the lookback scan), but **write** verdicts to your local disk — handy before a verdict bucket exists.
+
+```bash
+STORAGE_PROVIDER=gcs              # default for every root...
+VERDICT_STORAGE_PROVIDER=local   # ...except verdicts, written to local-data/
+
+PRODUCTION_BUCKET=my-prod-logs   # real GCS bucket, read-only
+VERDICT_BUCKET=verdicts          # becomes local-data/verdicts/
+JUDGE_LLM_API_KEY=sk-ant-...
+# GCP credentials still required for the GCS read (gcloud ADC or a key file)
+```
+
+`GOLDEN_STORAGE_PROVIDER` defaults to `VERDICT_STORAGE_PROVIDER` (mirroring how `GOLDEN_BUCKET` defaults to `VERDICT_BUCKET`), so in the example above golden examples are also read from local disk. Set it explicitly to decouple them. Any combination of `gcs`/`local`/`s3`/`azure` per root is valid.
 
 ---
 
@@ -121,6 +141,9 @@ python -m llm_judge run --dry-run
 | **Storage** | | | | |
 | `STORAGE_PROVIDER` | string | `gcs` | No | Storage backend: `gcs`, `local`, `s3` (stub), `azure` (stub) |
 | `LOCAL_STORAGE_BASE_DIR` | string | `local-data` | No | Root directory for `STORAGE_PROVIDER=local`; resolved relative to CWD; bucket names become subdirectories; `local-data/` is gitignored |
+| `PRODUCTION_STORAGE_PROVIDER` | string | `STORAGE_PROVIDER` | No | Override the backend for **production logs only**. Enables per-root mixing (see [Mixed Storage](#mixed-storage--cloud-logs-local-verdicts)) |
+| `VERDICT_STORAGE_PROVIDER` | string | `STORAGE_PROVIDER` | No | Override the backend for **verdict writes only** |
+| `GOLDEN_STORAGE_PROVIDER` | string | `VERDICT_STORAGE_PROVIDER` | No | Override the backend for **golden reads only**; defaults to the verdict provider |
 | `PRODUCTION_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) containing production logs — READ ONLY |
 | `VERDICT_BUCKET` | string | — | **Yes** | GCS bucket (or local subdirectory) where verdicts are written |
 | `GOLDEN_BUCKET` | string | `VERDICT_BUCKET` | No | Bucket for golden examples; defaults to `VERDICT_BUCKET` |
@@ -141,6 +164,7 @@ python -m llm_judge run --dry-run
 | `JUDGE_MAX_WORKERS` | int | `5` | No | Thread-pool workers for parallel turn evaluation |
 | `JUDGE_INPUT_TRUNCATE_CHARS` | int | `150000` | No | Max characters of turn input before truncation (duplicate-check inputs each get half) |
 | `JUDGE_PARSE_ERROR_THRESHOLD` | int | `10` | No | Force-send alert when parse errors in a run exceed this, even if `ALERT_ON_SUCCESS=false` |
+| `JUDGE_GOLDEN_EXAMPLES_MAX` | int | `2` | No | Max golden examples loaded per rubric and passed to the judge as calibration context |
 | **Alerting** | | | | |
 | `ALERT_WEBHOOK_URL` | string | — | No | Webhook endpoint for digest POST (e.g. Slack incoming webhook) |
 | `ALERT_EMAILS` | string | — | No | Comma-separated email recipients for digest |
@@ -226,18 +250,28 @@ Golden examples are stored in GCS at:
 {GOLDEN_BUCKET}/{GOLDEN_PREFIX}{rubric_name}/
 ```
 
-For example, if `GOLDEN_BUCKET=my-bucket`, `GOLDEN_PREFIX=golden/`, and the rubric is `final_summary`:
+For example, if `GOLDEN_BUCKET=my-bucket`, `GOLDEN_PREFIX=golden/`, and the rubric is `full_summary`:
 
 ```
-gs://my-bucket/golden/final_summary/example1.json
-gs://my-bucket/golden/final_summary/example2.json
+gs://my-bucket/golden/full_summary/example1.json
+gs://my-bucket/golden/full_summary/example2.json
 ```
 
 Each golden JSON file must:
 - Be a valid log file matching the rubric's expected schema
 - Contain `"expected_verdict": "pass"` to indicate it is a positive (high-quality) example
 
-Up to 2 goldens per rubric are loaded. These are passed to the judge as calibration examples in the system prompt. Empty folders are silently ignored.
+Up to `JUDGE_GOLDEN_EXAMPLES_MAX` goldens per rubric are loaded (default 2). These are passed to the judge as calibration examples in the system prompt. Empty folders are silently ignored.
+
+### Bundled fallback
+
+If the bucket returns zero examples for a rubric, the judge falls back to bundled examples shipped with the code at:
+
+```
+src/llm_judge/rubrics/golden/<rubric_name>/*.json
+```
+
+This guarantees the judge always has calibration examples when available, even if the bucket folder is missing or empty. The fallback kicks in **only** when the bucket has zero examples — any non-empty bucket folder is used as-is.
 
 ---
 

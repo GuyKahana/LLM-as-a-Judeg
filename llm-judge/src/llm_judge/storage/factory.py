@@ -13,7 +13,11 @@ if TYPE_CHECKING:
     from llm_judge.config import Settings
 
 
-def create_provider(root: str, config: "Settings") -> StorageProvider:
+def create_provider(
+    root: str,
+    config: "Settings",
+    provider: "str | None" = None,
+) -> StorageProvider:
     """Return the appropriate :class:`StorageProvider` for *root*.
 
     *root* is the bucket name for cloud providers, or a base directory path
@@ -24,10 +28,13 @@ def create_provider(root: str, config: "Settings") -> StorageProvider:
     root:
         Bucket name (GCS/S3/Azure) or base directory path (local).
     config:
-        Fully-populated Settings instance; ``config.storage_provider``
-        controls which backend is used.
+        Fully-populated Settings instance.
+    provider:
+        Backend to use for this root (``"gcs"``, ``"local"``, ``"s3"``,
+        ``"azure"``).  When ``None``, falls back to ``config.storage_provider``.
+        This is what lets different roots use different backends.
     """
-    provider = config.storage_provider.lower()
+    provider = (provider or config.storage_provider).lower()
 
     if provider == "gcs":
         from llm_judge.storage.gcs import GCSStorageProvider

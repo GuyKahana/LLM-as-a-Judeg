@@ -8,127 +8,91 @@ from llm_judge.rubrics.registry import get_golden_type, get_rubric_content, get_
 
 
 class TestGetRubricName:
-    # Exact filenames → final_summary
-    def test_final_summary_json(self):
-        assert get_rubric_name("final_summary.json") == "final_summary"
-
+    # Exact filenames
     def test_full_summary_json(self):
-        assert get_rubric_name("full_summary.json") == "final_summary"
+        assert get_rubric_name("full_summary.json") == "full_summary"
 
-    # document_summaries
     def test_split_document_summaries(self):
-        assert get_rubric_name("split_document_summaries.json") == "document_summaries"
-
-    def test_medical_doc_numbered(self):
-        assert get_rubric_name("medical_doc_3.json") == "document_summaries"
-
-    def test_medical_doc_numbered_large(self):
-        assert get_rubric_name("medical_doc_123.json") == "document_summaries"
-
-    # extraction_list
-    def test_findings(self):
-        assert get_rubric_name("findings.json") == "extraction_list"
-
-    def test_surgeries(self):
-        assert get_rubric_name("surgeries.json") == "extraction_list"
+        assert (
+            get_rubric_name("split_document_summaries.json")
+            == "split_document_summaries_by_dates"
+        )
 
     def test_sick_permits(self):
-        assert get_rubric_name("sick_permits.json") == "extraction_list"
+        assert get_rubric_name("sick_permits.json") == "sick_permits"
 
-    def test_incidents(self):
-        assert get_rubric_name("incidents.json") == "extraction_list"
-
-    def test_disabilities(self):
-        assert get_rubric_name("disabilities.json") == "extraction_list"
-
-    def test_adl_records(self):
-        assert get_rubric_name("adl_records.json") == "extraction_list"
-
-    def test_accident_details(self):
-        assert get_rubric_name("accident_details.json") == "extraction_list"
-
-    def test_clean_medications(self):
-        assert get_rubric_name("clean_medications.json") == "extraction_list"
-
-    # grouping_boundary
-    def test_filter_diagnoses(self):
-        assert get_rubric_name("filter_diagnoses.json") == "grouping_boundary"
-
-    def test_merge_diagnoses(self):
-        assert get_rubric_name("merge_diagnoses.json") == "grouping_boundary"
-
-    def test_page_pair(self):
-        assert get_rubric_name("Page1<>Page2.json") == "grouping_boundary"
-
-    def test_page_pair_large_numbers(self):
-        assert get_rubric_name("Page10<>Page20.json") == "grouping_boundary"
-
-    # classifier
-    def test_document_conditions_classifier(self):
-        assert get_rubric_name("document_conditions_classifier_1.json") == "classifier"
-
-    def test_diagnoses_by_date_classifier(self):
-        assert get_rubric_name("diagnoses_by_date_classifier_5.json") == "classifier"
-
-    def test_medical_doc_validator(self):
-        assert get_rubric_name("medical_doc_validator_2.json") == "classifier"
-
-    # duplicate_check
-    def test_check_duplication(self):
-        assert get_rubric_name("check_duplication_1<>2.json") == "duplicate_check"
-
-    def test_check_duplication_large(self):
-        assert get_rubric_name("check_duplication_100<>200.json") == "duplicate_check"
-
-    # personal_committee
     def test_personal_details(self):
-        assert get_rubric_name("personal_details.json") == "personal_committee"
+        assert get_rubric_name("personal_details.json") == "personal_details"
 
     def test_past_committees(self):
-        assert get_rubric_name("past_committees.json") == "personal_committee"
+        assert get_rubric_name("past_committees.json") == "past_committees"
+
+    # Parameterised patterns
+    def test_page_pair(self):
+        assert get_rubric_name("Page1<>Page2.json") == "same_document"
+
+    def test_page_pair_large_numbers(self):
+        assert get_rubric_name("Page10<>Page20.json") == "same_document"
+
+    def test_medical_doc_numbered(self):
+        assert get_rubric_name("medical_doc_3.json") == "medical_document"
+
+    def test_medical_doc_numbered_large(self):
+        assert get_rubric_name("medical_doc_123.json") == "medical_document"
+
+    def test_medical_doc_validator(self):
+        assert (
+            get_rubric_name("medical_doc_validator_2.json") == "medical_document_validator"
+        )
+
+    def test_check_duplication(self):
+        assert (
+            get_rubric_name("check_duplication_1<>2.json") == "document_duplicate_check"
+        )
+
+    def test_check_duplication_large(self):
+        assert (
+            get_rubric_name("check_duplication_100<>200.json")
+            == "document_duplicate_check"
+        )
+
+    # Dropped types now return None
+    def test_findings_no_longer_mapped(self):
+        assert get_rubric_name("findings.json") is None
+
+    def test_final_summary_no_longer_mapped(self):
+        assert get_rubric_name("final_summary.json") is None
+
+    def test_classifier_no_longer_mapped(self):
+        assert get_rubric_name("document_conditions_classifier_1.json") is None
 
     # Unknown
     def test_unknown_file(self):
         assert get_rubric_name("unknown_file.json") is None
 
-    def test_random_filename(self):
-        assert get_rubric_name("some_random_log_20240101.json") is None
-
     def test_partial_match_not_accepted(self):
-        # Should not match medical_doc_\d+ because of extra text
         assert get_rubric_name("medical_doc_abc.json") is None
 
 
 class TestGetGoldenType:
-    def test_merge_diagnoses_overrides_to_nursing(self):
-        assert get_golden_type("merge_diagnoses.json") == "nursing_merge_diagnoses"
+    """Golden type mirrors the rubric name (one golden set per filename type)."""
 
-    def test_medical_doc_validator_overrides_to_nursing(self):
-        assert get_golden_type("medical_doc_validator_1.json") == "nursing_medical_document_validator"
+    def test_matches_rubric_name(self):
+        assert get_golden_type("sick_permits.json") == "sick_permits"
 
-    def test_non_overridden_file_falls_back_to_rubric_name(self):
-        assert get_golden_type("filter_diagnoses.json") == "grouping_boundary"
-
-    def test_final_summary_falls_back_to_rubric_name(self):
-        assert get_golden_type("final_summary.json") == "final_summary"
+    def test_matches_rubric_name_for_parameterised(self):
+        assert (
+            get_golden_type("medical_doc_validator_1.json") == "medical_document_validator"
+        )
 
     def test_unknown_file_returns_none(self):
         assert get_golden_type("unknown_file.json") is None
 
 
 class TestGetRubricContent:
-    def test_loads_final_summary(self):
-        content = get_rubric_content("final_summary")
-        assert "completeness" in content.lower()
+    def test_loads_full_summary(self):
+        content = get_rubric_content("full_summary")
         assert "Required Output Format" in content
-
-    def test_loads_extraction_list(self):
-        content = get_rubric_content("extraction_list")
-        assert "recall" in content.lower()
-
-    def test_loads_duplicate_check(self):
-        content = get_rubric_content("duplicate_check")
-        assert "duplicate" in content.lower()
 
     def test_raises_for_unknown_rubric(self):
         with pytest.raises(FileNotFoundError):
@@ -136,8 +100,15 @@ class TestGetRubricContent:
 
     def test_all_rubrics_have_output_format(self):
         rubric_names = [
-            "final_summary", "document_summaries", "extraction_list",
-            "classifier", "grouping_boundary", "duplicate_check", "personal_committee",
+            "full_summary",
+            "split_document_summaries_by_dates",
+            "sick_permits",
+            "personal_details",
+            "past_committees",
+            "same_document",
+            "medical_document",
+            "medical_document_validator",
+            "document_duplicate_check",
         ]
         for name in rubric_names:
             content = get_rubric_content(name)

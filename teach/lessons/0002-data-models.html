@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 2 — Data Models</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #2563eb;
+    --border: #e0e0d8;
+    --code-bg: #f0efe8;
+    --correct: #16a34a;
+    --wrong: #dc2626;
+    --reveal-bg: #fffbeb;
+    --reveal-border: #fde68a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "Georgia", serif;
+    font-size: 18px;
+    line-height: 1.75;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.35rem; font-weight: 700; margin: 2.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.05rem; font-weight: 700; margin: 1.5rem 0 0.35rem; }
+  p  { margin-bottom: 1rem; }
+  ul, ol { margin: 0.5rem 0 1.25rem 1.5rem; line-height: 2.1; }
+
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 2rem; font-family: monospace; }
+
+  code {
+    font-family: "Menlo", "Courier New", monospace;
+    font-size: 0.82em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    margin-bottom: 1.25rem;
+  }
+
+  a { color: var(--accent); }
+
+  /* Model cards */
+  .model-card {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+  .model-card-header {
+    background: var(--code-bg);
+    padding: 0.5rem 1rem;
+    font-family: monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .model-type {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .model-card table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .model-card th {
+    text-align: left;
+    padding: 0.4rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .model-card td {
+    padding: 0.45rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .model-card tr:last-child td { border-bottom: none; }
+  .model-card td:first-child { font-family: monospace; font-size: 0.82rem; color: var(--accent); white-space: nowrap; }
+  .model-card td:nth-child(2) { font-family: monospace; font-size: 0.78rem; color: #7c3aed; white-space: nowrap; }
+
+  .note {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 5px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  /* Trace exercise */
+  .trace-section {
+    margin-top: 3rem;
+    border-top: 2px solid var(--border);
+    padding-top: 2rem;
+  }
+  .trace-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .trace-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+  .trace-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  @media (max-width: 600px) { .trace-grid { grid-template-columns: 1fr; } }
+
+  .trace-box {
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .trace-box-header {
+    background: var(--code-bg);
+    padding: 0.4rem 0.75rem;
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+  }
+  .trace-box pre { border: none; border-radius: 0; margin: 0; font-size: 0.77rem; }
+
+  /* Field reveal */
+  .field-rows { margin: 1.5rem 0; }
+  .field-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    align-items: start;
+  }
+  .field-row:first-child { border-top: 1px solid var(--border); }
+  .field-name {
+    font-family: monospace;
+    font-size: 0.82rem;
+    color: var(--accent);
+    padding: 0.55rem 0.75rem;
+    border-right: 1px solid var(--border);
+    background: var(--code-bg);
+    font-weight: 600;
+  }
+  .field-answer {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .reveal-btn {
+    font-size: 0.78rem;
+    font-family: monospace;
+    background: var(--reveal-bg);
+    border: 1px solid var(--reveal-border);
+    border-radius: 4px;
+    padding: 0.15em 0.6em;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .reveal-btn:hover { background: #fde68a; }
+  .answer-text {
+    display: none;
+    font-family: monospace;
+    font-size: 0.82rem;
+    color: var(--correct);
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    padding: 0.25em 0.6em;
+  }
+  .answer-text.shown { display: inline-block; }
+  .why-text {
+    display: none;
+    font-size: 0.82rem;
+    color: var(--muted);
+    flex-basis: 100%;
+    padding-top: 0.25rem;
+  }
+  .why-text.shown { display: block; }
+
+  /* Quiz */
+  .quiz { margin-top: 3rem; border-top: 2px solid var(--border); padding-top: 2rem; }
+  .quiz-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .quiz-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+  .question { margin-bottom: 2rem; }
+  .question p { font-weight: 600; margin-bottom: 0.6rem; }
+  .options { display: flex; flex-direction: column; gap: 0.45rem; }
+  .option {
+    display: block;
+    padding: 0.55rem 1rem;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    background: white;
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+  }
+  .option:hover { border-color: var(--accent); }
+  .option.correct  { border-color: var(--correct); background: #f0fdf4; color: var(--correct); font-weight: 600; }
+  .option.wrong    { border-color: var(--wrong);   background: #fef2f2; color: var(--wrong); }
+  .option.disabled { cursor: default; }
+  .feedback {
+    font-size: 0.88rem;
+    margin-top: 0.5rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 4px;
+    display: none;
+  }
+  .feedback.correct { display: block; background: #f0fdf4; color: var(--correct); }
+  .feedback.wrong   { display: block; background: #fef2f2; color: var(--wrong); }
+
+  .score-box {
+    margin-top: 2rem;
+    padding: 1rem 1.25rem;
+    background: var(--reveal-bg);
+    border: 1px solid var(--reveal-border);
+    border-radius: 5px;
+    font-size: 1rem;
+    display: none;
+  }
+
+  .primary-source {
+    margin-top: 3rem;
+    padding: 1rem 1.25rem;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .primary-source strong { display: block; margin-bottom: 0.25rem; }
+
+  .ask-teacher {
+    margin-top: 2.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  .ask-teacher strong { display: block; margin-bottom: 0.25rem; }
+
+  .nav-links { font-size: 0.85rem; color: var(--muted); margin-top: 2.5rem; }
+  .nav-links a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<p class="meta">LESSON 2 of ? &nbsp;·&nbsp; Data Models &nbsp;·&nbsp; ~15 min &nbsp;·&nbsp; <a href="0001-architecture-overview.html">← Lesson 1</a></p>
+<h1>The Five Data Shapes</h1>
+<p style="color:var(--muted); font-size:0.95rem; margin-bottom:2rem;">
+  Everything in this system is data flowing between modules. This lesson is about the shapes that data takes.
+</p>
+
+<h2>Why this matters</h2>
+<p>
+  Every module in your project communicates by passing typed objects — not raw dicts, not strings.
+  If you understand the five data models in <code>models.py</code>, you can read any function signature
+  and instantly know what goes in, what comes out, and what can fail.
+</p>
+<p>The five shapes, in the order they appear during a run:</p>
+<ol>
+  <li><code>BlobMeta</code> — a pointer to a log file in storage</li>
+  <li><code>ParsedTurn</code> — one normalised log entry, ready to evaluate</li>
+  <li><code>Verdict</code> — the judge's decision on one turn</li>
+  <li><code>FlaggedItem</code> — a condensed view of a bad verdict, for the alert digest</li>
+  <li><code>RunSummary</code> — the aggregate result of the whole batch</li>
+</ol>
+
+<!-- ── BlobMeta ───────────────────────────────────────────── -->
+<h2>1. BlobMeta</h2>
+<p>
+  The lightest object in the system. Created by <code>StorageClient</code> when it lists files,
+  consumed by <code>runner.py</code>. It carries just enough to know <em>what to fetch</em> — nothing about the content yet.
+</p>
+
+<div class="model-card">
+  <div class="model-card-header">BlobMeta <span class="model-type">namedtuple (not Pydantic)</span></div>
+  <table>
+    <tr><th>field</th><th>type</th><th>what it is</th></tr>
+    <tr><td>case_id</td><td>str</td><td>The patient/case folder, e.g. <code>"abc-123"</code></td></tr>
+    <tr><td>filename</td><td>str</td><td>The log file name, e.g. <code>"filter_diagnoses.json"</code></td></tr>
+    <tr><td>modified_time</td><td>datetime | None</td><td>When the file was last written — used to enforce the lookback window. <code>None</code> if the storage backend can't determine it.</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <strong>Why a namedtuple, not Pydantic?</strong><br>
+  <code>BlobMeta</code> is created in very high volume (once per log file) and never serialised to JSON.
+  A namedtuple has no validation overhead and is immutable. Pydantic is reserved for objects that get written to storage or need validation.
+</div>
+
+<!-- ── ParsedTurn ─────────────────────────────────────────── -->
+<h2>2. ParsedTurn</h2>
+<p>
+  Created by <code>log_parser.py</code> from the raw JSON dict. This is the normalised, schema-agnostic view of one log entry. After this point, the rest of the system doesn't care which of the four schemas the original file used.
+</p>
+
+<div class="model-card">
+  <div class="model-card-header">ParsedTurn <span class="model-type">Pydantic BaseModel</span></div>
+  <table>
+    <tr><th>field</th><th>type</th><th>what it is</th></tr>
+    <tr><td>prompt</td><td>str</td><td>The system/instruction prompt. For <code>boundary_check</code> and <code>duplicate_check</code> schemas this is a synthetic placeholder — the original log had none.</td></tr>
+    <tr><td>input</td><td>str</td><td>The user input fed to the production LLM. For <code>duplicate_check</code>, this is a JSON string containing both <code>input1</code> and <code>input2</code>.</td></tr>
+    <tr><td>output</td><td>Any</td><td>What the production LLM returned. A string for <code>standard</code> and <code>boundary_check</code>; a dict for <code>tool_use</code> and <code>duplicate_check</code>.</td></tr>
+    <tr><td>schema_variant</td><td>str</td><td>One of: <code>standard</code>, <code>tool_use</code>, <code>boundary_check</code>, <code>duplicate_check</code>. Set by the parser.</td></tr>
+    <tr><td>case_id</td><td>str</td><td>Carried forward from <code>BlobMeta</code>.</td></tr>
+    <tr><td>filename</td><td>str</td><td>Carried forward from <code>BlobMeta</code>.</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <strong>Key insight:</strong> the <code>prompt</code> field always has a value — even for schemas that don't log a prompt.
+  The parser synthesises placeholders like <code>"[boundary check — no separate prompt logged]"</code>
+  so that <code>evaluator.py</code> never has to handle <code>None</code>.
+</div>
+
+<!-- ── Verdict ────────────────────────────────────────────── -->
+<h2>3. Verdict</h2>
+<p>
+  The most important object. Created by <code>evaluator.py</code>, written to storage as JSON by the runner.
+  Every log file eventually becomes exactly one Verdict.
+</p>
+
+<div class="model-card">
+  <div class="model-card-header">Verdict <span class="model-type">Pydantic BaseModel</span></div>
+  <table>
+    <tr><th>field</th><th>type</th><th>what it is</th></tr>
+    <tr><td>case_id</td><td>str</td><td>Carried from <code>ParsedTurn</code>.</td></tr>
+    <tr><td>filename</td><td>str</td><td>Carried from <code>ParsedTurn</code>.</td></tr>
+    <tr><td>prompt_type</td><td>str</td><td>The rubric name (e.g. <code>"grouping_boundary"</code>). Note: this is the rubric name, not the schema variant — they are different.</td></tr>
+    <tr><td>schema_variant</td><td>str</td><td>Carried from <code>ParsedTurn</code> — records which of the 4 schemas this log used.</td></tr>
+    <tr><td>score</td><td>int | None</td><td>1–5 from the LLM. <strong><code>None</code> when <code>parse_error=True</code></strong> — the LLM responded but the response couldn't be parsed.</td></tr>
+    <tr><td>per_criterion</td><td>dict</td><td>Breakdown of the score by rubric dimension. E.g. <code>{"completeness": 4, "accuracy": 3}</code>. Empty dict on parse error.</td></tr>
+    <tr><td>flagged</td><td>bool</td><td><code>True</code> when <code>score &lt;= JUDGE_SCORE_THRESHOLD</code>. <strong>Computed in code — never asked of the LLM.</strong></td></tr>
+    <tr><td>reasoning</td><td>str</td><td>The LLM's explanation for the score. Empty string on parse error.</td></tr>
+    <tr><td>parse_error</td><td>bool</td><td><code>True</code> when both LLM attempts returned unparseable JSON.</td></tr>
+    <tr><td>raw_response</td><td>str | None</td><td>First 500 chars of the LLM response — <strong>only stored on parse error</strong> for debugging. <code>None</code> on success.</td></tr>
+    <tr><td>evaluated_at</td><td>datetime</td><td>UTC timestamp set at the start of <code>evaluate_turn()</code>.</td></tr>
+    <tr><td>run_id</td><td>str</td><td>Stamped by the runner <em>after</em> <code>evaluate_turn()</code> returns. Empty string in older verdicts.</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <strong>Two failure modes — and they look different:</strong>
+  <ul style="margin: 0.5rem 0 0 1.25rem;">
+    <li>Parse error: <code>score=None</code>, <code>parse_error=True</code>, <code>raw_response="…"</code></li>
+    <li>Low quality (flagged): <code>score=2</code>, <code>flagged=True</code>, <code>parse_error=False</code></li>
+  </ul>
+  These are completely different situations. A parse error means the judge itself broke. A flagged verdict means the judge worked and found a problem.
+</div>
+
+<!-- ── FlaggedItem ─────────────────────────────────────────── -->
+<h2>4. FlaggedItem</h2>
+<p>
+  A trimmed-down view of a flagged <code>Verdict</code>, assembled by <code>runner.py</code> and handed to <code>alerts.py</code>.
+  The alert digest doesn't need the full verdict — just enough to identify the problem and give a hint.
+</p>
+
+<div class="model-card">
+  <div class="model-card-header">FlaggedItem <span class="model-type">Pydantic BaseModel</span></div>
+  <table>
+    <tr><th>field</th><th>type</th><th>what it is</th></tr>
+    <tr><td>case_id</td><td>str</td><td>Which case.</td></tr>
+    <tr><td>filename</td><td>str</td><td>Which log file.</td></tr>
+    <tr><td>prompt_type</td><td>str</td><td>Which rubric family flagged it.</td></tr>
+    <tr><td>score</td><td>int | None</td><td>The score that triggered the flag.</td></tr>
+    <tr><td>reasoning_snippet</td><td>str</td><td>First 200 characters of the verdict's reasoning — a preview, not the full text.</td></tr>
+  </table>
+</div>
+
+<!-- ── RunSummary ─────────────────────────────────────────── -->
+<h2>5. RunSummary</h2>
+<p>
+  Created at the end of <code>runner.py</code> and written to
+  <code>gs://VERDICT_BUCKET/runs/{run_id}.json</code>. This is what the Streamlit dashboard reads to show you the history of batch runs.
+</p>
+
+<div class="model-card">
+  <div class="model-card-header">RunSummary <span class="model-type">Pydantic BaseModel</span></div>
+  <table>
+    <tr><th>field</th><th>type</th><th>what it is</th></tr>
+    <tr><td>run_id</td><td>str</td><td>A UUID generated at the start of <code>run_batch()</code>.</td></tr>
+    <tr><td>started_at</td><td>datetime</td><td>UTC timestamp when the run began.</td></tr>
+    <tr><td>finished_at</td><td>datetime</td><td>UTC timestamp when the run ended.</td></tr>
+    <tr><td>total_logs</td><td>int</td><td>All log files found in the lookback window — before any filtering.</td></tr>
+    <tr><td>evaluated</td><td>int</td><td>How many were actually sent to the LLM.</td></tr>
+    <tr><td>skipped_existing</td><td>int</td><td>Skipped because a verdict already existed (idempotency).</td></tr>
+    <tr><td>unmapped</td><td>int</td><td>Skipped because no rubric matched the filename.</td></tr>
+    <tr><td>flagged</td><td>int</td><td>Count of verdicts with <code>flagged=True</code>.</td></tr>
+    <tr><td>errors</td><td>int</td><td>Unhandled exceptions — network failures, write failures, etc.</td></tr>
+    <tr><td>parse_errors</td><td>int</td><td>Verdicts where both LLM attempts failed to produce valid JSON.</td></tr>
+    <tr><td>by_prompt_type</td><td>dict[str, int]</td><td>Count of evaluations per rubric, e.g. <code>{"final_summary": 12, "grouping_boundary": 8}</code>.</td></tr>
+    <tr><td>flagged_items</td><td>list[FlaggedItem]</td><td>The actual flagged verdicts embedded here for the alert digest.</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <strong>The accounting identity:</strong> <code>total_logs = evaluated + skipped_existing + unmapped</code> (plus any items capped by <code>JUDGE_MAX_TURNS_PER_RUN</code>). If these don't add up, something was missed.
+</div>
+
+<!-- ── TRACE EXERCISE ─────────────────────────────────────── -->
+<div class="trace-section">
+  <p class="trace-title">Trace the data — worked example</p>
+  <p class="trace-sub">
+    You already know <code>filter_diagnoses.json</code> from lesson 1. Let's trace it through the two transformations:
+    raw JSON → <code>ParsedTurn</code> → <code>Verdict</code>. Click <strong>reveal</strong> on each field to check your prediction.
+  </p>
+
+  <div class="trace-grid">
+    <div class="trace-box">
+      <div class="trace-box-header">filter_diagnoses.json (raw, simplified)</div>
+      <pre>{
+  "prompt": "&lt;role&gt;You are a clinical
+    data filter…&lt;/role&gt;…",
+  "input": "[{\"diagnosis\":
+    \"ISCHEMIC HEART DISEASE\"…}]",
+  "output": {
+    "diagnoses": [
+      {"startDate": "01/1989", …},
+      …
+    ]
+  }
+}</pre>
+    </div>
+    <div class="trace-box">
+      <div class="trace-box-header">After parse_log() → ParsedTurn</div>
+      <pre style="color:var(--muted)">predict each field below ↓</pre>
+    </div>
+  </div>
+
+  <p style="font-size:0.9rem; color:var(--muted); margin-bottom:0.75rem;">
+    For each <code>ParsedTurn</code> field, think about the value — then click reveal.
+  </p>
+
+  <div class="field-rows">
+
+    <div class="field-row">
+      <div class="field-name">prompt</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"&lt;role&gt;You are a clinical data filter…"</span>
+        <span class="why-text">Copied directly from the JSON — this file has a real prompt.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">input</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"[{\"diagnosis\": \"ISCHEMIC HEART DISEASE\"…}]"</span>
+        <span class="why-text">The diagnosis list JSON string, copied from raw_json["input"].</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">output</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">{"diagnoses": [{…}, …]}  (a dict)</span>
+        <span class="why-text">The output is a dict → stored as-is. The evaluator will JSON-serialise it when building the prompt.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">schema_variant</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"tool_use"</span>
+        <span class="why-text">Has "prompt" key AND output is a dict → matches the tool_use branch in log_parser.py.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">case_id</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">(from BlobMeta — e.g. "abc-123")</span>
+        <span class="why-text">Not in the JSON — carried forward from the BlobMeta the runner fetched.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">filename</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"filter_diagnoses.json"</span>
+        <span class="why-text">Also from BlobMeta. Not in the file contents — it's the file's name in storage.</span>
+      </div>
+    </div>
+
+  </div>
+
+  <p style="margin-top: 1.5rem; font-size:0.9rem; color:var(--muted);">
+    Now after <code>evaluate_turn()</code> — assuming the LLM responds correctly with <code>{"score": 4, "per_criterion": {"accuracy": 4, "completeness": 4}, "reasoning": "Good filter…"}</code> and <code>JUDGE_SCORE_THRESHOLD=3</code>:
+  </p>
+
+  <div class="field-rows">
+
+    <div class="field-row">
+      <div class="field-name">score</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">4</span>
+        <span class="why-text">Parsed directly from the LLM JSON response field "score".</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">flagged</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">False</span>
+        <span class="why-text">score(4) > threshold(3), so flagged=False. The LLM never decides this — the code does.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">parse_error</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">False</span>
+        <span class="why-text">The LLM returned valid JSON that passed _parse_verdict_json().</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">raw_response</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">None</span>
+        <span class="why-text">raw_response is only stored when parse_error=True. On success it's discarded to save space.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">prompt_type</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"grouping_boundary"</span>
+        <span class="why-text">From the registry: filter_diagnoses.json → grouping_boundary rubric. Separate from schema_variant.</span>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-name">run_id</div>
+      <div class="field-answer">
+        <button class="reveal-btn" onclick="reveal(this)">reveal</button>
+        <span class="answer-text">"" → then a UUID after return</span>
+        <span class="why-text">evaluate_turn() returns a Verdict with run_id="". The runner stamps it: verdict.run_id = run_id. Two-step.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── QUIZ ─────────────────────────────────────────────────── -->
+<div class="quiz">
+  <p class="quiz-title">Self-check — 5 questions</p>
+  <p class="quiz-sub">No peeking at the cards above.</p>
+
+  <!-- Q1 -->
+  <div class="question" id="q1">
+    <p>1. A verdict has <code>parse_error=True</code>. What is the value of <code>flagged</code>?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q1', 'flagged is computed from score. With parse_error=True, score=None — so the score<=threshold check is skipped and flagged stays False.')">True — parse errors are always flagged</span>
+      <span class="option" onclick="answer(this, true,  'q1', 'Correct. flagged=False on parse_error. The evaluator hardcodes flagged=False when it cannot parse the LLM response (models.py line 45 default, evaluator.py line 186).')">False — parse errors are never flagged</span>
+      <span class="option" onclick="answer(this, false, 'q1', 'flagged is computed from score. With parse_error=True, score=None — so the score<=threshold check is skipped and flagged stays False.')">Depends on JUDGE_SCORE_THRESHOLD setting</span>
+      <span class="option" onclick="answer(this, false, 'q1', 'flagged is computed from score. With parse_error=True, score=None — so the score<=threshold check is skipped and flagged stays False.')">None — same as score on parse error</span>
+    </div>
+    <div class="feedback" id="q1-feedback"></div>
+  </div>
+
+  <!-- Q2 -->
+  <div class="question" id="q2">
+    <p>2. The <code>run_id</code> field on <code>Verdict</code> is set by which module?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q2', 'evaluator.py returns the Verdict with run_id left as empty string. The runner stamps it after the fact.')">evaluator.py — it generates and assigns the UUID</span>
+      <span class="option" onclick="answer(this, false, 'q2', 'evaluator.py returns the Verdict with run_id left as empty string. The runner stamps it after the fact.')">llm_client.py — it tags responses with a run ID</span>
+      <span class="option" onclick="answer(this, true,  'q2', 'Correct. runner.py calls evaluate_turn(), gets back a Verdict with run_id="", then stamps it: verdict.run_id = run_id. See runner.py line 45.')">runner.py — it stamps the Verdict after evaluate_turn() returns</span>
+      <span class="option" onclick="answer(this, false, 'q2', 'evaluator.py returns the Verdict with run_id left as empty string. The runner stamps it after the fact.')">models.py — the Field default_factory generates it</span>
+    </div>
+    <div class="feedback" id="q2-feedback"></div>
+  </div>
+
+  <!-- Q3 -->
+  <div class="question" id="q3">
+    <p>3. A <code>boundary_check</code> log has no <code>prompt</code> field in its JSON. What does <code>ParsedTurn.prompt</code> contain?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q3', 'log_parser.py synthesises a placeholder so evaluator.py never receives None.')">None — the field is left empty for this schema</span>
+      <span class="option" onclick="answer(this, false, 'q3', 'log_parser.py synthesises a placeholder so evaluator.py never receives None.')">An empty string — the default Pydantic value</span>
+      <span class="option" onclick="answer(this, true,  'q3', 'Correct. log_parser.py line 59 returns "[boundary check — no separate prompt logged]". The system always has a non-None prompt string.')">A synthetic placeholder string injected by log_parser.py</span>
+      <span class="option" onclick="answer(this, false, 'q3', 'log_parser.py synthesises a placeholder so evaluator.py never receives None.')">The filename — used as a proxy for the missing prompt</span>
+    </div>
+    <div class="feedback" id="q3-feedback"></div>
+  </div>
+
+  <!-- Q4 -->
+  <div class="question" id="q4">
+    <p>4. What is the difference between <code>errors</code> and <code>parse_errors</code> in <code>RunSummary</code>?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q4', 'parse_errors is specifically when the LLM responded but the JSON was invalid. errors is everything else: network failures, storage write failures, unhandled exceptions.')">errors is LLM failures; parse_errors is storage failures</span>
+      <span class="option" onclick="answer(this, true,  'q4', 'Correct. parse_errors = LLM responded with unparseable JSON (after retry). errors = unhandled exception in the worker thread (network, storage, etc.).')">parse_errors is unparseable LLM JSON; errors is unhandled exceptions</span>
+      <span class="option" onclick="answer(this, false, 'q4', 'parse_errors is specifically when the LLM responded but the JSON was invalid. errors is everything else: network failures, storage write failures, unhandled exceptions.')">They count the same thing, errors is the total of parse_errors</span>
+      <span class="option" onclick="answer(this, false, 'q4', 'parse_errors is specifically when the LLM responded but the JSON was invalid. errors is everything else: network failures, storage write failures, unhandled exceptions.')">errors is from reading logs; parse_errors is from writing verdicts</span>
+    </div>
+    <div class="feedback" id="q4-feedback"></div>
+  </div>
+
+  <!-- Q5 -->
+  <div class="question" id="q5">
+    <p>5. How is <code>Verdict.flagged</code> determined?</p>
+    <div class="options">
+      <span class="option" onclick="answer(this, false, 'q5', 'The LLM is never asked about flagging. flagged is computed purely in Python: score <= JUDGE_SCORE_THRESHOLD.')">The LLM is asked to include a flagged field in its JSON response</span>
+      <span class="option" onclick="answer(this, false, 'q5', 'The LLM is never asked about flagging. flagged is computed purely in Python: score <= JUDGE_SCORE_THRESHOLD.')">It is set by alerts.py when building the digest</span>
+      <span class="option" onclick="answer(this, false, 'q5', 'The LLM is never asked about flagging. flagged is computed purely in Python: score <= JUDGE_SCORE_THRESHOLD.')">It is a Pydantic validator that checks per_criterion scores</span>
+      <span class="option" onclick="answer(this, true,  'q5', 'Correct. evaluator.py line 203: flagged = score <= config.judge_score_threshold. Pure Python comparison, no LLM involvement.')">It is computed in Python: score &lt;= JUDGE_SCORE_THRESHOLD</span>
+    </div>
+    <div class="feedback" id="q5-feedback"></div>
+  </div>
+
+  <div class="score-box" id="score-box"></div>
+</div>
+
+<!-- ── PRIMARY SOURCE ─────────────────────────────────────── -->
+<div class="primary-source">
+  <strong>Primary source for this lesson</strong>
+  Read <code>src/llm_judge/models.py</code> — the entire file is 78 lines. Read it top to bottom,
+  including the comments. Then read <code>evaluator.py</code> lines 181–208 to see exactly how a
+  <code>Verdict</code> is constructed in the parse-error vs. success paths.
+</div>
+
+<div class="ask-teacher">
+  <strong>Questions? Ask your teacher.</strong>
+  Type anything in the chat — why a field is Optional, what happens to old verdicts with run_id="",
+  how the dashboard reads RunSummary, or anything else.
+</div>
+
+<p class="nav-links">
+  ← <a href="0001-architecture-overview.html">Lesson 1: Architecture Overview</a>
+  &nbsp;·&nbsp;
+  Next: Lesson 3 — The Runner: how the batch loop works end to end
+</p>
+
+<script>
+  function reveal(btn) {
+    const row = btn.closest('.field-answer');
+    btn.style.display = 'none';
+    row.querySelector('.answer-text').classList.add('shown');
+    row.querySelector('.why-text').classList.add('shown');
+  }
+
+  const FEEDBACK = {
+    q1: { correct: '', wrong: '' },
+    q2: { correct: '', wrong: '' },
+    q3: { correct: '', wrong: '' },
+    q4: { correct: '', wrong: '' },
+    q5: { correct: '', wrong: '' },
+  };
+
+  let answered = {};
+  let correct = 0;
+  const total = 5;
+
+  function answer(el, isCorrect, qid, explanation) {
+    if (answered[qid]) return;
+    answered[qid] = true;
+
+    const siblings = el.parentElement.querySelectorAll('.option');
+    siblings.forEach(o => o.classList.add('disabled'));
+
+    const feedback = document.getElementById(qid + '-feedback');
+    if (isCorrect) {
+      el.classList.add('correct');
+      feedback.className = 'feedback correct';
+      feedback.innerHTML = explanation;
+      correct++;
+    } else {
+      el.classList.add('wrong');
+      feedback.className = 'feedback wrong';
+      feedback.innerHTML = explanation;
+      siblings.forEach(o => {
+        if (o.onclick && o.onclick.toString().includes('true')) {
+          o.classList.add('correct');
+        }
+      });
+    }
+
+    if (Object.keys(answered).length === total) {
+      const box = document.getElementById('score-box');
+      box.style.display = 'block';
+      const pct = Math.round((correct / total) * 100);
+      if (pct === 100) {
+        box.innerHTML = `🎯 ${correct}/${total} — Perfect. You understand the data shapes that flow through this system.`;
+      } else if (pct >= 60) {
+        box.innerHTML = `${correct}/${total} (${pct}%) — Good. Re-read the model cards for the fields you missed, then look at the actual code lines referenced in the feedback.`;
+      } else {
+        box.innerHTML = `${correct}/${total} (${pct}%) — Go back and read models.py and evaluator.py lines 181–208 before continuing.`;
+      }
+    }
+  }
+</script>
+
+</body>
+</html>

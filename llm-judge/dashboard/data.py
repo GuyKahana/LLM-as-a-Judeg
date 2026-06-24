@@ -126,18 +126,34 @@ def load_source_log(case_id: str, filename: str) -> Optional[dict]:
         return None
 
 
-@st.cache_data(ttl=30)
-def list_cases() -> list[str]:
-    """List distinct case_id directories under prod/logs/.
+def _production_provider(source: str):
+    """Return the StorageProvider to search for production logs.
 
-    Falls back to extracting case_ids from verdicts if prod listing fails.
+    ``source="cloud"`` uses the configured production root (GCS in a hybrid
+    setup). ``source="local"`` builds a LocalStorageProvider rooted at
+    ``<LOCAL_STORAGE_BASE_DIR>/<PRODUCTION_BUCKET>``, independent of
+    ``PRODUCTION_STORAGE_PROVIDER`` — so the UI can browse local test cases
+    while real runs still read from the cloud.
     """
-    client, _config = _get_storage_client()
+    client, config = _get_storage_client()
+    if source == "local":
+        from llm_judge.storage.factory import create_provider
 
-    # Try listing from prod logs
+        return create_provider(config.production_bucket, config, "local")
+    return client._prod
+
+
+@st.cache_data(ttl=30)
+def list_cases(source: str = "cloud") -> list[str]:
+    """List distinct case_id directories under ``logs/`` for *source*.
+
+    Falls back to extracting case_ids from verdicts if listing fails.
+    """
+    provider = _production_provider(source)
+
     try:
         seen: set[str] = set()
-        for path, _mtime in client._prod.list_files("logs/"):
+        for path, _mtime in provider.list_files("logs/"):
             parts = path.split("/")
             if len(parts) >= 3:  # must be logs/{case_id}/{filename}
                 candidate = parts[1]
@@ -146,11 +162,29 @@ def list_cases() -> list[str]:
         if seen:
             return sorted(seen)
     except Exception as exc:
-        logger.warning("Could not list prod logs: %s", exc)
+        logger.warning("Could not list %s logs: %s", source, exc)
+
+    if source == "local":
+        return []  # no verdict fallback for local browsing
 
     # Fallback: derive from verdicts
     verdicts = load_verdicts()
     return sorted({v["case_id"] for v in verdicts if v.get("case_id")})
+
+
+@st.cache_data(ttl=30)
+def lookup_case_files(case_id: str, source: str = "cloud") -> list[str]:
+    """Return the sorted log filenames for *case_id* under *source*.
+
+    Used by the Trigger view to verify a typed case ID exists (and show what
+    will be evaluated) before launching a run. An empty list means the case was
+    not found under ``logs/{case_id}/``. ``source`` is ``"cloud"`` (the
+    configured production root) or ``"local"`` (the local filesystem).
+    """
+    provider = _production_provider(source)
+    prefix = f"logs/{case_id}/"
+    files = [path.split("/")[-1] for path, _mtime in provider.list_files(prefix)]
+    return sorted(f for f in files if f)
 
 
 def upload_case_logs(case_id: str, files: list[tuple[str, bytes]]) -> list[str]:

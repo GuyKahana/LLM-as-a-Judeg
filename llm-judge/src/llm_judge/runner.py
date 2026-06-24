@@ -15,7 +15,7 @@ from llm_judge.golden_examples import load_golden_examples
 from llm_judge.llm_client import LLMClient
 from llm_judge.log_parser import parse_log
 from llm_judge.models import BlobMeta, FlaggedItem, RunSummary, Verdict
-from llm_judge.rubrics.registry import get_golden_type, get_rubric_content, get_rubric_name
+from llm_judge.rubrics.registry import get_rubric_content, get_rubric_name
 from llm_judge.storage.client import StorageClient
 
 logger = logging.getLogger(__name__)
@@ -33,12 +33,13 @@ def _evaluate_one(
     raw_json = storage_client.read_log(blob.case_id, blob.filename)
     parsed_turn = parse_log(raw_json, blob.filename, blob.case_id)
     rubric_content = get_rubric_content(rubric_name)
-    golden_type = get_golden_type(blob.filename) or rubric_name
     logger.info(
-        "Evaluating %s/%s with rubric=%s golden_type=%s",
-        blob.case_id, blob.filename, rubric_name, golden_type,
+        "Evaluating %s/%s with rubric=%s",
+        blob.case_id, blob.filename, rubric_name,
     )
-    golden_examples = load_golden_examples(storage_client, golden_type)
+    golden_examples = load_golden_examples(
+        storage_client, rubric_name, limit=config.judge_golden_examples_max,
+    )
     verdict = evaluate_turn(
         parsed_turn=parsed_turn,
         rubric_content=rubric_content,
