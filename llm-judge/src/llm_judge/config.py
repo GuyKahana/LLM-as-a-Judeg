@@ -127,6 +127,24 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def resolve_local_storage_base_dir(self) -> "Settings":
+        """Anchor a relative LOCAL_STORAGE_BASE_DIR to the project root.
+
+        Otherwise the path resolves against each process's current working
+        directory, so a dashboard and a runner subprocess launched from
+        different directories would read/write *different* ``local-data`` trees
+        and local runs would silently vanish from the dashboard. Absolute paths
+        are left untouched.
+        """
+        from pathlib import Path
+
+        base = Path(self.local_storage_base_dir)
+        if not base.is_absolute():
+            project_root = Path(__file__).resolve().parents[2]  # …/llm-judge
+            self.local_storage_base_dir = str((project_root / base).resolve())
+        return self
+
+    @model_validator(mode="after")
     def validate_sampling_params(self) -> "Settings":
         if self.judge_temperature is not None and self.judge_top_p is not None:
             raise ValueError(

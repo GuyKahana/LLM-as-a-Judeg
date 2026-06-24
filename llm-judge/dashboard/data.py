@@ -41,6 +41,18 @@ def _get_storage_client():
 # ---------------------------------------------------------------------------
 
 
+def runs_location_hint() -> str:
+    """Human-readable description of where run summaries are expected to live."""
+    _client, config = _get_storage_client()
+    base = ""
+    if config.verdict_storage_provider == "local":
+        base = f"{config.local_storage_base_dir}/"
+    return (
+        f"{base}{config.verdict_bucket}/{config.runs_prefix} "
+        f"(provider: {config.verdict_storage_provider})"
+    )
+
+
 @st.cache_data(ttl=30)
 def load_runs() -> list[dict]:
     """Load all run summary files from {verdict_bucket}/{runs_prefix}*.json.

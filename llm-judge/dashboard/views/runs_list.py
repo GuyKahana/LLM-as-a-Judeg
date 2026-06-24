@@ -48,6 +48,17 @@ def render() -> None:
         st.info("No runs found. Use the **Trigger** tab to start a batch evaluation.")
         return
 
+    # Be honest when we're improvising: synthetic runs are derived from verdict
+    # files because no real run-summaries were found where we looked. Surface
+    # that (and where we looked) so a CWD/provider mismatch isn't mistaken for
+    # real run history.
+    if all(r.get("synthetic") for r in runs):
+        st.warning(
+            "No run-summary files found — showing **synthetic** runs derived "
+            "from verdicts. Real runs appear once the judge writes run "
+            f"summaries to `{data.runs_location_hint()}`."
+        )
+
     # Build table rows
     rows = []
     for r in runs:

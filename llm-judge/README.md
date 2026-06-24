@@ -140,7 +140,7 @@ JUDGE_LLM_API_KEY=sk-ant-...
 |---|---|---|---|---|
 | **Storage** | | | | |
 | `STORAGE_PROVIDER` | string | `gcs` | No | Storage backend: `gcs`, `local`, `s3` (stub), `azure` (stub) |
-| `LOCAL_STORAGE_BASE_DIR` | string | `local-data` | No | Root directory for `STORAGE_PROVIDER=local`; resolved relative to CWD; bucket names become subdirectories; `local-data/` is gitignored |
+| `LOCAL_STORAGE_BASE_DIR` | string | `local-data` | No | Root directory for `STORAGE_PROVIDER=local`; a relative path is anchored to the project root (`llm-judge/`), not the CWD, so the dashboard and runner agree; bucket names become subdirectories; `local-data/` is gitignored |
 | `PRODUCTION_STORAGE_PROVIDER` | string | `STORAGE_PROVIDER` | No | Override the backend for **production logs only**. Enables per-root mixing (see [Mixed Storage](#mixed-storage--cloud-logs-local-verdicts)) |
 | `VERDICT_STORAGE_PROVIDER` | string | `STORAGE_PROVIDER` | No | Override the backend for **verdict writes only** |
 | `GOLDEN_STORAGE_PROVIDER` | string | `VERDICT_STORAGE_PROVIDER` | No | Override the backend for **golden reads only**; defaults to the verdict provider |

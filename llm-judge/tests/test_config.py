@@ -38,6 +38,30 @@ class TestGoldenBucketDefault:
         assert settings.golden_bucket == "my-bucket"
 
 
+class TestLocalStorageBaseDir:
+    def test_relative_base_dir_anchored_to_project_root(self):
+        """A relative LOCAL_STORAGE_BASE_DIR becomes absolute under llm-judge/."""
+        import os
+
+        settings = Settings(
+            production_bucket="prod",
+            verdict_bucket="verdict",
+            judge_llm_api_key="sk-ant-test-1234",
+            local_storage_base_dir="./local-data",
+        )
+        assert os.path.isabs(settings.local_storage_base_dir)
+        assert settings.local_storage_base_dir.endswith("/llm-judge/local-data")
+
+    def test_absolute_base_dir_left_untouched(self):
+        settings = Settings(
+            production_bucket="prod",
+            verdict_bucket="verdict",
+            judge_llm_api_key="sk-ant-test-1234",
+            local_storage_base_dir="/tmp/judge-data",
+        )
+        assert settings.local_storage_base_dir == "/tmp/judge-data"
+
+
 class TestLLMBaseUrl:
     def test_base_url_passed_to_anthropic_constructor(self):
         """When JUDGE_LLM_BASE_URL is set, it should reach the Anthropic constructor."""
