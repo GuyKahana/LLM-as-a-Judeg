@@ -207,16 +207,21 @@ def lookup_case_files(case_id: str, source: str = "cloud") -> list[str]:
 
 
 def upload_case_logs(case_id: str, files: list[tuple[str, bytes]]) -> list[str]:
-    """Write uploaded log files to the production bucket under logs/{case_id}/.
+    """Write uploaded log files to the LOCAL production root under logs/{case_id}/.
+
+    Upload Case is a local-testing tool: cases are always written to the local
+    filesystem (regardless of PRODUCTION_STORAGE_PROVIDER), so the subsequent
+    all-local "Run judge" reads exactly these files and the case is browsable
+    via the Trigger view's "Local files" source.
 
     *files* is a list of (filename, raw_bytes) pairs.
     Returns the list of filenames that were written successfully.
     """
-    client, _config = _get_storage_client()
+    provider = _production_provider("local")
     written: list[str] = []
     for filename, content in files:
         path = f"logs/{case_id}/{filename}"
-        client._prod.write_file(path, content.decode("utf-8"))
+        provider.write_file(path, content.decode("utf-8"))
         written.append(filename)
     # Invalidate case list cache so the new case appears immediately
     list_cases.clear()
