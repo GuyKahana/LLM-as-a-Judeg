@@ -34,12 +34,12 @@ This service MUST NOT depend on, import from, or modify the production repositor
   2. **Tool-use**: `{prompt: str, input: str, output: dict}`
   3. **Boundary check**: `{input: str, output: str}` (no `prompt` field)
   4. **Duplicate check**: `{input1: object, input2: object, output: str}`
-- Log filenames are stable per prompt type. Known patterns include:
-  - `final_summary.json`, `findings.json`, `surgeries.json`, `sick_permits.json`, `incidents.json`, `disabilities.json`, `adl_records.json`, `accident_details.json`
-  - `medical_doc_{order}.json`, `document_conditions_classifier_{order}.json`, `diagnoses_by_date_classifier_{page_num}.json`
-  - `filter_diagnoses.json`, `merge_diagnoses.json`, `clean_medications.json`
-  - `personal_details.json`, `past_committees.json`, `full_summary.json`, `split_document_summaries.json`
-  - `Page{n}<>Page{m}.json`, `medical_doc_validator_{order}.json`, `check_duplication_{order1}<>{order2}.json`
+- Log filenames are stable per prompt type. The registry
+  (`src/llm_judge/rubrics/registry.py`) is the source of truth for which
+  filenames map to a rubric; any filename not listed below is treated as
+  **unmapped** and skipped. Mapped patterns:
+  - Exact: `full_summary.json`, `split_document_summaries.json`, `sick_permits.json`, `personal_details.json`, `past_committees.json`
+  - Parameterised: `Page{n}<>Page{m}.json`, `medical_doc_{order}.json`, `medical_doc_validator_{order}.json`, `check_duplication_{order1}<>{order2}.json`
 - Langfuse may be used by production, but the judge does NOT read from Langfuse — GCS only.
 - Deployment target: customer private networks with their own LLM endpoints. The judge's LLM client MUST support a configurable base URL and API key.
 
