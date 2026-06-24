@@ -36,7 +36,7 @@ class ParsedTurn(BaseModel):
 class Verdict(BaseModel):
     case_id: str
     filename: str
-    prompt_type: str  # rubric name (e.g. 'final_summary')
+    prompt_type: str  # rubric name (e.g. 'full_summary')
     schema_variant: str
     score: Optional[int] = None
     per_criterion: dict[str, Any] = Field(default_factory=dict)

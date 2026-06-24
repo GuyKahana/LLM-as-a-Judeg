@@ -1,0 +1,9 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Bootstrap script — not part of the project
+get-pip.py
+
+# Judge debug dumps — contain raw production turns (medical PII). Never commit.
+debug-dumps/

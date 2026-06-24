@@ -5,6 +5,7 @@ Reads ``STORAGE_PROVIDER`` from config (default ``"gcs"``).
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from llm_judge.storage.base import StorageProvider
@@ -41,7 +42,6 @@ def create_provider(
         return GCSStorageProvider(bucket=root, config=config)
 
     if provider == "local":
-        import os
         from llm_judge.storage.local import LocalStorageProvider
         base = config.local_storage_base_dir
         # For local, root is treated as a subdirectory under base_dir
@@ -56,6 +56,8 @@ def create_provider(
         return AzureStorageProvider(container=root, config=config)
 
     raise ValueError(
-        f"Unknown STORAGE_PROVIDER={provider!r}. "
+        f"Unknown storage provider {provider!r} for root {root!r}. "
+        "Check STORAGE_PROVIDER or the relevant per-root override "
+        "(PRODUCTION_/VERDICT_/GOLDEN_STORAGE_PROVIDER). "
         "Supported values: gcs, local, s3, azure."
     )

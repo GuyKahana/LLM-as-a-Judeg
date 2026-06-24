@@ -247,8 +247,6 @@ def upload_case_logs(case_id: str, files: list[tuple[str, bytes]]) -> list[str]:
 
 def _synthesise_runs_from_verdicts(client, config) -> list[dict]:
     """Build fake RunSummary-like dicts grouped by case_id from verdict files."""
-    from collections import defaultdict
-
     verdicts = load_verdicts()
     by_case: dict[str, list[dict]] = defaultdict(list)
     for v in verdicts:

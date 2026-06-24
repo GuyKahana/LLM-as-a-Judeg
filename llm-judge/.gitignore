@@ -76,6 +76,9 @@ Thumbs.db
 # Local storage dev data
 local-data/
 
+# Judge debug dumps — contain raw production turns (medical PII). Never commit.
+debug-dumps/
+
 # GCP credentials
 *.json
 !tests/fixtures/*.json
